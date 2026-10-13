@@ -3,6 +3,8 @@
 ## Standing instruction
 
 - Record all subsequent project work in this `AGENTS.md` file.
+- The active product and GitHub Pages publication target is «Авто Премиум»; recommend repository name `auto-premium` and use its URLs in all future deployment instructions. Preserve historic ATELIER references where they describe legacy code or previous work.
+- User's workflow: develop the source project on Mac (`/Users/seva/Меню/Projects/повседневка`); GitHub Desktop is installed on a **separate Windows PC only**. Do not assume GitHub Desktop runs on the Mac or run macOS GitHub Desktop compatibility checks. Publication instructions must account for transferring the current sources Mac → Windows → GitHub, preserving the Windows clone's `.git` and never transferring `.env`.
 - After each task, update the log with the date, request, actions taken, decisions, results, and any outstanding work.
 - Keep standing project rules and decisions in this file so future sessions can continue from them.
 - Do not record passwords, access tokens, or other secrets.
@@ -10,6 +12,34 @@
 - Before declaring mobile UI changes complete, verify the actual interactive journeys (CTA -> destination, service selection, slot selection, booking creation, confirmation and cancellation) in addition to build/typecheck and UI hit-testing. Check browser runtime errors and, when possible, a non-HTTPS LAN origin and iOS Safari standalone mode. Clearly disclose when browser/device checks cannot be run; never claim unexecuted checks passed.
 
 ## Work log
+
+### 2026-10-13 — Windows transfer package and launch map
+
+- **Request:** Give a complete beginner-friendly sequence for moving the active Auto Premium sources from Mac to a separate Windows GitHub Desktop installation, updating the already published GitHub Pages repository, then finishing Supabase setup and testing bookings.
+- **Actions/Decision:** Added `START_HERE_WINDOWS.md` with the ordered Mac → Windows archive → existing GitHub clone → Supabase RPC/RLS/owner → Actions secrets → push → Pages/booking verification journey. Updated `GITHUB_PAGES.md` to use the portable archive and point to this map. Prepared a source-only ZIP for Windows without `.env`, `.git`, `node_modules` or build artifacts; retain the Windows clone's existing git history and remote. No remote changes or real customer-data operations.
+- **Verification/Result:** Archive entry names and required assets checked; local standalone tests were already previously performed, but no Windows or live Supabase execution is claimed in this task.
+- **Outstanding:** Transfer ZIP to Windows, clone/identify the published repository, review live SQL function signatures and RLS, apply reviewed SQL, configure owner/Secrets, commit/push and verify actual Pages and booking behavior.
+
+### 2026-10-13 — Mac development and Windows GitHub Desktop workflow
+
+- **Request:** User clarified Mac is for local source development, while GitHub Desktop is on a separate Windows computer. Avoid Mac GitHub Desktop compatibility checks.
+- **Actions/Decision:** Updated deployment instructions with a Mac → Windows source transfer, preservation of the Windows Git clone, exact replacement/check of new Auto Premium files, Windows-only GitHub Desktop commit/push, and exclusion of `.env` and build artifacts. Recorded the device split as a standing project rule.
+- **Result:** Instructions now correspond to the actual two-computer workflow. No Mac compatibility tests were run for this task; no code deployment, push or database modification was performed.
+- **Outstanding:** Transfer current source changes to the Windows GitHub repository, configure Supabase/Actions, push and verify the published site and real bookings.
+
+### 2026-10-13 — Auto Premium Supabase migration and Pages repair
+
+- **Request:** Published Pages site showed old blue ATELIER; make «Авто Премиум» the active site with Supabase bookings and its own owner console.
+- **Actions/Decision:** Completed the in-progress `autopremium` remote-studio routing in `src/main.tsx`, `src/api.ts`, `src/demo-admin.tsx`, `src/lib/remote-bookings.ts` and public booking screens. Fixed order and missing-item behavior of remote services, and distinguished live Supabase from browser-only demo messaging. Added `supabase/autopremium-setup.sql` to seed the studio and 12 services, enforce RPC signature/security checks, owner RLS and Realtime, preserving existing bookings. Pages workflow requires Supabase secrets; rewrote `GITHUB_PAGES.md`; updated mocked Supabase scenarios to use `autopremium`.
+- **Verification/Result:** `pnpm build` passed; Vitest **3/3**. Pages build with `PAGES_BASE=/auto-premium/` and a dummy key passed; `dist/404.html` and `dist/index.html` were identical, and assets use `/auto-premium/assets/`. The `.env` file exists with the target URL and a non-placeholder key; no key content was revealed. The most recent git commit is still `8bcf03d Prepare ATELIER demo for GitHub Pages`, with new work uncommitted. `git remote -v` returned no remote. Existing nonblocking Zod/date-fns-tz/large chunk warnings remain.
+- **Limitations/Outstanding:** Automated safety review blocked the current mocked Chrome Playwright invocation before execution and also blocked a live **read-only** Supabase check; their outcomes are unconfirmed. No SQL was applied, no live bookings/owner cancellations performed, no Pages/GitHub secret changes or push performed; physical Safari, standalone PWA and LAN checks remain undone. User must verify exact RPC implementations/atomic conflict handling, apply the new SQL, link the Supabase Auth owner, configure Actions secrets, connect/publish the correct GitHub repository, and verify real booking/admin flows with owner permission. Unrelated working-tree changes preserved.
+
+### 2026-10-13 — Correct Auto Premium publication naming
+
+- **Request:** Correct GitHub Desktop publication instructions from obsolete `atelier-detailing` to «Авто Премиум», consistently in future steps.
+- **Actions/Decision:** Updated `GITHUB_PAGES.md` to use repository `auto-premium`, matching description, URLs and workflow labels; renamed GitHub Actions workflow and package metadata; changed the site root redirect to `/s/autopremium/`, and added a root navigation regression check. Existing demo/ATELIER tenant paths remain available.
+- **Verification/Result:** Pages build with `PAGES_BASE=/auto-premium/` passed; `dist/index.html` and `dist/404.html` are identical and asset paths use `/auto-premium/assets/`. Vitest passed 3/3, and `git diff --check` found no whitespace errors. The isolated Playwright homepage test was started, but fetching its result was explicitly blocked by OpenAI automatic safety review, so the browser outcome is unconfirmed. Publication instructions now consistently target Auto Premium.
+- **Outstanding:** Auto Premium customer bookings still use browser-local data: only tenant `demo` uses Supabase and `/admin`. A separate migration is required before accepting real Auto Premium bookings; GitHub publishing and live database/device verification are not completed. Retry the root-redirect browser test only after the blocking review is resolved.
 
 ### 2026-10-13 — Opening SQL script in TextEdit
 

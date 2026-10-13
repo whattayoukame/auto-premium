@@ -1,31 +1,71 @@
-# GitHub Pages + Supabase: публикация сайта записи
+# «Авто Премиум» — публикация и подключение записи
 
-Этот проект настроен на бесплатный GitHub Pages. После публикации клиент сможет открыть сайт на компьютере или телефоне, даже когда Mac выключен.
+**Начни с `START_HERE_WINDOWS.md`**: это пошаговая карта переноса готового ZIP с Mac на Windows, обновления существующего репозитория и запуска Supabase/GitHub Pages. Текущий файл — подробный справочник по настройкам.
 
-1. Установи [GitHub Desktop](https://desktop.github.com/) и войди в свой GitHub-аккаунт.
-2. В GitHub Desktop выбери **File → Add Local Repository** и папку `повседневка` (папку проекта на Mac). Если программа предложит создать локальный репозиторий, согласись и укажи `main` как основную ветку.
-3. Сделай первый коммит, например `Prepare GitHub Pages demo`, если GitHub Desktop предложит это сделать.
-4. Нажми **Publish repository**. Имя можешь выбрать `atelier-detailing`. Для бесплатного публичного просмотра выбери **Public** (убери галочку **Keep this code private**).
-5. На github.com открой новый репозиторий и зайди в **Settings → Pages → Build and deployment → Source → GitHub Actions**.
-6. Открой вкладку **Actions**, дождись зелёного результата `Publish demo to GitHub Pages`. Если автоматический запуск не произошёл, выбери этот workflow → **Run workflow**.
-7. Скопируй адрес сайта из **Settings → Pages**. Для репозитория `atelier-detailing` он выглядит как `https://ТВОЙ-ЛОГИН.github.io/atelier-detailing/`. С настроенным Supabase главная откроет `/s/demo/`, запись — `/s/demo/booking`, панель владельца — `/admin` (с префиксом репозитория).
+Исходники разрабатываются на **Mac** в `/Users/seva/Меню/Projects/повседневка`. **GitHub Desktop установлен только на отдельном Windows-компьютере**; на Mac его искать, устанавливать или проверять не требуется. Код должен попасть с Mac на Windows, а уже затем — из Windows в GitHub. Имя репозитория — **auto-premium**. Основная страница `/s/autopremium/`, форма `/s/autopremium/booking`, кабинет владельца `/admin`. Адрес проекта GitHub Pages: `https://ВАШ-ЛОГИН.github.io/auto-premium/` (все пути после него добавляются без второго `auto-premium`). Сайт остаётся **неофициальным концептом** до согласования с компанией.
 
-Чтобы опубликовать изменения, после редактирования файлов сделай **Commit** и **Push origin** в GitHub Desktop. GitHub Actions обновит сайт автоматически.
+## 1. Настройка Supabase — новая студия
 
-## Что увидят клиенты
+1. Открой [Supabase Dashboard](https://supabase.com/dashboard), выбери **именно проект** `dezrztmfucvptdqwzvqv`.
+2. В левом меню открой **SQL Editor → New query**.
+3. В Finder на Mac открой папку проекта → `supabase` → **`autopremium-setup.sql`**. Это обычный текстовый файл: открой его в TextEdit (или VS Code), выдели весь текст `⌘A`, скопируй `⌘C`.
+4. Вставь в Supabase SQL Editor и нажми **Run**. Это **новый** скрипт для «Авто Премиум», а **не** `demo-rls.sql` и не старую миграцию `20261011000000_booking.sql`. Существующие записи удалять не нужно.
+5. Если появится ошибка про сигнатуру `create_booking`, `get_busy` или SECURITY DEFINER, **не отключай проверки**. Открой отдельный запрос и выполни:
 
-- Студия `demo` читает имя, часовой пояс и весь список услуг из Supabase. Занятое время показывает RPC `get_busy`, запись подтверждает только RPC `create_booking`. В `/admin` владелец видит общий список в реальном времени и может отменить запись.
-- Копия подтверждения хранится в браузере клиента для `/s/demo/my`, но основная запись находится в Supabase. Актуальный статус подтверждения в браузере может отличаться после отмены владельцем.
-- Старые тестовые сайты `/s/autopremium/` и `/s/atelier/` сохраняют локальный демо-режим; он не подключён к настоящей базе.
-- В публичный репозиторий нельзя добавлять `.env` с секретами или конфиденциальные данные. Файл `.gitignore` исключает `.env` и `.env.*` (кроме `.env.example`).
+   ```sql
+   select proname, pg_get_function_identity_arguments(p.oid) as args,
+          pg_get_function_result(p.oid) as result, p.prosecdef as security_definer
+   from pg_proc p join pg_namespace n on p.pronamespace = n.oid
+   where n.nspname = 'public' and proname in ('create_booking','get_busy');
+   ```
 
-## Обязательная настройка Supabase (один раз)
+   Нужно сопоставить результат с RPC из кода и проверить, что SQL-функции действительно атомарно блокируют занятые интервалы и повторный `p_key`. Пока это не проверено, не принимать реальные записи.
+6. В **Table Editor → studios** должна появиться `slug = autopremium`, `name = АВТО ПРЕМИУМ`; в **services** — 12 услуг с соответствующим `studio_id`. Стоимость и длительность этих услуг теперь читаются сайтом из Supabase. Другие колонки представления пока остаются шаблоном сайта.
 
-1. Убедись, что есть `studios.slug = 'demo'`, услуги в `services` связаны через `studio_id`, а функция `create_booking` возвращает UUID. `get_busy` возвращает `starts_at` и `ends_at`. Функции должны безопасно валидировать входящие данные, идемпотентность `p_key` и конфликты слотов на сервере.
-2. В Supabase SQL Editor выполни [`supabase/demo-rls.sql`](supabase/demo-rls.sql). Он предполагает поля `studio_owners.user_id` и `studio_owners.studio_id`: проверь их перед запуском. Также проверь сигнатуры RPC в конце SQL. **Не выполняй старую миграцию** `20261011000000_booking.sql`: это несовместимая схема предыдущего прототипа.
-3. В Supabase Authentication создай владельца (email и пароль), добавь связь его `auth.users.id` со студией `demo` в таблицу `studio_owners`. Доступ к `bookings` только через RLS владельца; анонимный клиент может вызывать лишь безопасные RPC создания и просмотра занятости.
-4. В корневом `.env` URL уже задан. Замени `VITE_SUPABASE_ANON_KEY=ВСТАВЬ_КЛЮЧ` на **anon/publishable key** из Supabase → Project Settings → API Keys. **Никогда не используй `service_role` в браузере**.
-5. В GitHub → **Settings → Secrets and variables → Actions** создай repository secrets `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` с настоящими значениями. Workflow `.github/workflows/pages.yml` передаёт их на шаг Vite build. Ключ anon попадает в публичный JS-бандл по назначению; безопасность обеспечивает RLS.
-6. Повтори commit и push в `main`. Сборка учитывает `PAGES_BASE`, React Router — `basename`, а Vite создаёт `dist/404.html` для прямых ссылок на вложенные страницы (сервер GitHub Pages может ответить 404, но страница загрузится).
+## 2. Владелец и доступ к записям
 
-**Ограничения:** в заявленной схеме студии нет расписания, боксов, адреса и визуальных данных. Пока они берутся из визуального шаблона ATELIER; название, часовой пояс и услуги — из Supabase. Локальный календарь использует один условный бокс и `get_busy`, окончательное решение по времени принимает `create_booking`. Для самостоятельной отмены клиента нужен дополнительный защищённый RPC и токен; текущая отмена доступна только владельцу.
+1. В Supabase открой **Authentication → Users → Add user**; создай владельца с email и паролем (или найди уже созданного пользователя).
+2. Скопируй его **User UID**. В **SQL Editor → New query** вставь следующий SQL, заменив `ВСТАВЬ_USER_UID` на действительный UUID пользователя:
+
+   ```sql
+   insert into public.studio_owners (user_id, studio_id)
+   select 'ВСТАВЬ_USER_UID'::uuid, id
+   from public.studios where slug = 'autopremium'
+   on conflict do nothing;
+   ```
+
+3. В **Table Editor → studio_owners** убедись, что строка появилась именно для `autopremium`. Политики RLS дают клиентам только доступ к студии/услугам и безопасным RPC; список записей и смена статуса доступны владельцу.
+4. Кабинет будет по адресу `https://ВАШ-ЛОГИН.github.io/auto-premium/admin`. Вход осуществляется через **email и пароль** этого Supabase-пользователя.
+
+## 3. Ключи Supabase
+
+1. В Supabase открой **Project Settings → API Keys** (или новый раздел **API Keys**) и скопируй **anon** либо **publishable** key. **Никогда не копируй `service_role` или `secret` key в сайт!**
+2. На Mac открой скрытый текстовый файл `повседневка/.env`. Если Finder его не показывает, нажми `⌘⇧.`. Внутри должны быть две строки:
+
+   ```dotenv
+   VITE_SUPABASE_URL=https://dezrztmfucvptdqwzvqv.supabase.co
+   VITE_SUPABASE_ANON_KEY=ВАШ_ПУБЛИЧНЫЙ_КЛЮЧ
+   ```
+
+3. Сохрани файл в режиме **обычного текста**, без расширения `.txt`. Он исключён из Git и не публикуется. При локальном запуске перезапусти сервер, чтобы Vite перечитал `.env`.
+
+## 4. Передача проекта Mac → Windows → GitHub и Actions Secrets
+
+1. **На Windows** открой **GitHub Desktop**. В **Current Repository** проверь, какой репозиторий выбран. Если на GitHub уже опубликован `auto-premium` (пусть даже сейчас он показывает старый ATELIER), открой **File → Clone repository → GitHub.com**, выбери именно `auto-premium` и клонируй его в папку Windows (или выбери существующий локальный клон). **Не создавай второй репозиторий**, если нужный уже есть. Проверь выбранную папку через **Repository → Show in Explorer**.
+2. **На Mac** перенеси на Windows подготовленный архив `auto-premium-transfer-2026-10-13.zip` (путь указан в чате), распакуй его. Архив уже включает папки `src`, `public`, `tenants`, `supabase`, `.github` и корневые файлы проекта; `.env`, `.git`, `node_modules`, `dist` исключены. Переносить все файлы вручную необязательно.
+3. **На Windows** открой папку клонированного репозитория через **Repository → Show in Explorer** и скопируй туда **содержимое распакованного архива**, сохранив структуру папок и разрешив замену старых исходников. Копируй файлы изнутри, а не целую папку с архивом. Не заменяй `.git` клона. Убедись, что в корне есть `.github/workflows/pages.yml`, `src/auto-premium.tsx`, `tenants/autopremium/settings.json` и `supabase/autopremium-setup.sql`.
+4. Если на GitHub **ещё нет** репозитория `auto-premium`, на Windows в GitHub Desktop можно открыть перенесённую папку через **File → Add Local Repository**, при необходимости создать в ней репозиторий и нажать **Publish repository**, задав имя `auto-premium`. Не делай этого, если уже есть опубликованный репозиторий, — используй шаги 1–3.
+5. Открой на GitHub **репозиторий `auto-premium` → Settings → Secrets and variables → Actions → New repository secret**. Добавь отдельно:
+   - `VITE_SUPABASE_URL` = `https://dezrztmfucvptdqwzvqv.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = тот самый публичный ключ из Supabase.
+6. **На Windows** вернись в GitHub Desktop: проверь **Changes** (должны быть файлы «Авто Премиум») → введи `Connect Auto Premium booking and Pages` → **Commit to main** → **Push origin**. При новой публикации будет **Publish repository**. **Одной кнопки Publish до переноса файлов с Mac недостаточно**: она отправит старый код с Windows.
+7. На сайте GitHub открой **Settings → Pages → Build and deployment → Source**, выбери **GitHub Actions**.
+8. Перейди в **Actions → Publish Auto Premium to GitHub Pages**. Дождись зелёного завершения **последнего** workflow из нового коммита (или нажми **Run workflow**). Если secrets не заданы, workflow остановится с ошибкой, чтобы не выкладывать демо с локальными записями.
+
+## 5. Проверка опубликованного сайта
+
+1. В **Settings → Pages** открой опубликованный URL, например `https://ВАШ-ЛОГИН.github.io/auto-premium/`. Должен появиться тёмный бежево-коричневый сайт **«АВТО ПРЕМИУМ»**. Если появился синий ATELIER, проверь, что открываешь **новый репозиторий**, что в **Actions** есть зелёная сборка свежего коммита, и обнови страницу с очисткой кэша.
+2. Перейди на `/auto-premium/s/autopremium/booking`: выбери услугу/дату/время, проверь отметки «занято». Для живой проверки создавай тестовую запись только после проверки RPC и согласования с владельцем.
+3. Открой `/auto-premium/admin`, войди через Supabase Auth: запись должна появиться в списке. Нажми «Отменить» и проверь статус и освобождение времени. Открой ссылку `/auto-premium/admin` напрямую в новой вкладке, чтобы проверить `404.html` fallback.
+
+**Текущее ограничение:** пока не подтверждены передача свежих исходников с Mac на Windows, коммит и push в нужный удалённый репозиторий, применение SQL, GitHub secrets, настоящая запись в базе, Realtime и реальный iPhone. Не следует утверждать, что запись дошла до владельца. В старом `/s/atelier/` по-прежнему существует отдельная демонстрационная версия, но маршрут `/` направлен на «Авто Премиум».

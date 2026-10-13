@@ -7,13 +7,13 @@ import { bookingInputSchema, studioSchema, type Booking, type BookingInput, type
 import { createUUID } from './uuid';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 export { supabase } from './lib/supabase';
-import { demoStudio, demoAvailability, demoReserve, readDemoReceipt } from './lib/demo-bookings';
+import { remoteStudio, remoteAvailability, remoteReserve, readRemoteReceipt } from './lib/remote-bookings';
 
 export const isDemo = !isSupabaseConfigured;
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-export const isRemoteDemo = (slug: string) => slug === 'demo';
-export const isLocalTenant = (slug: string) => slug === 'atelier' || slug === 'autopremium';
+export const isRemoteStudio = (slug: string) => slug === 'demo' || (slug === 'autopremium' && isSupabaseConfigured);
+export const isLocalTenant = (slug: string) => slug === 'atelier' || (slug === 'autopremium' && !isSupabaseConfigured);
 type DemoState = { studio: Studio; bookings: Booking[]; payments: Overview['payments'] };
 const storageKey = (slug: string) => `atelier-v1:${slug}`;
 const seeds: Record<string, Studio> = Object.fromEntries([atelierStudio, autoPremiumStudio].map(raw => {
@@ -43,18 +43,18 @@ async function request<T>(slug: string, path: string, method = 'GET', body?: unk
 }
 export const api = {
   async studio(slug: string): Promise<Studio> {
-    if (isRemoteDemo(slug)) return demoStudio();
+    if (isRemoteStudio(slug)) return remoteStudio(slug);
     if (isLocalTenant(slug)) return read(slug).studio;
     return request<Studio>(slug, `studio?slug=${encodeURIComponent(slug)}`);
   },
   async availability(slug: string, serviceId: string, date: string): Promise<Availability> {
-    if (isRemoteDemo(slug)) return demoAvailability(serviceId, date);
+    if (isRemoteStudio(slug)) return remoteAvailability(slug, serviceId, date);
     if (isLocalTenant(slug)) { const s = read(slug); const service = s.studio.services.find(x => x.id === serviceId); if (!service) throw Error('Услуга не найдена'); return calculateAvailability(s.studio, service, date, s.bookings); }
     return request<Availability>(slug, `availability?slug=${encodeURIComponent(slug)}&serviceId=${encodeURIComponent(serviceId)}&date=${encodeURIComponent(date)}`);
   },
   async reserve(slug: string, input: BookingInput): Promise<Booking> {
     const validated = bookingInputSchema.parse(input);
-    if (isRemoteDemo(slug)) return demoReserve(validated);
+    if (isRemoteStudio(slug)) return remoteReserve(slug, validated);
     if (!isLocalTenant(slug)) return request<Booking>(slug, 'reserve', 'POST', validated);
     const state = read(slug);
     const existing = state.bookings.find(b => b.id === validated.idempotencyKey);
@@ -71,13 +71,13 @@ export const api = {
     state.bookings.push(booking); save(slug, state); return booking;
   },
   async ownBooking(slug: string, id: string, token: string): Promise<Booking> {
-    if (isRemoteDemo(slug)) return readDemoReceipt(id);
+    if (isRemoteStudio(slug)) return readRemoteReceipt(slug, id);
     if (!isLocalTenant(slug)) return request<Booking>(slug, `booking?slug=${encodeURIComponent(slug)}&id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`);
     const b = read(slug).bookings.find(x => x.id === id && x.cancellationToken === token);
     if (!b) throw Error('Запись не найдена'); return b;
   },
   async cancel(slug: string, id: string, token: string) {
-    if (isRemoteDemo(slug)) throw new Error('Отменить запись может владелец через /admin');
+    if (isRemoteStudio(slug)) throw new Error('Отменить запись может владелец через /admin');
     if (!isLocalTenant(slug)) return request<Booking>(slug, 'cancel', 'POST', { id, token });
     const state = read(slug); const b = state.bookings.find(x => x.id === id && x.cancellationToken === token);
     if (!b) throw Error('Запись не найдена');

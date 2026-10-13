@@ -8,7 +8,7 @@ const studioId = '10000000-0000-4000-8000-000000000001';
 const serviceId = '20000000-0000-4000-8000-000000000001';
 const bookingId = '30000000-0000-4000-8000-000000000001';
 const ownerId = '40000000-0000-4000-8000-000000000001';
-const studio = { id: studioId, slug: 'demo', name: 'Тестовая студия', timezone: 'Europe/Moscow' };
+const studio = { id: studioId, slug: 'autopremium', name: 'АВТО ПРЕМИУМ', timezone: 'Asia/Novosibirsk' };
 const services = [{ id: serviceId, studio_id: studioId, name: 'Сервис Supabase', price: 5000, duration_min: 60 }];
 
 async function mockBackend(page: Page, options: { occupied?: boolean; conflict?: boolean } = {}) {
@@ -19,12 +19,15 @@ async function mockBackend(page: Page, options: { occupied?: boolean; conflict?:
     const url = new URL(route.request().url());
     const path = url.pathname;
     const respond = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
-    if (path.endsWith('/studios')) return respond(studio);
+    if (path.endsWith('/studios')) {
+      expect(url.searchParams.get('slug')).toBe('eq.autopremium');
+      return respond(studio);
+    }
     if (path.endsWith('/services')) return respond(services);
     if (path.endsWith('/studio_owners')) return respond({ studio_id: studioId });
     if (path.endsWith('/rpc/get_busy')) {
       const { p_to } = route.request().postDataJSON() as { p_to: string };
-      const starts_at = new Date(Date.parse(p_to) - 14 * 3600_000).toISOString(); // 10:00 MSK
+      const starts_at = new Date(Date.parse(p_to) - 14 * 3600_000).toISOString(); // 10:00 Novosibirsk
       const ends_at = new Date(Date.parse(starts_at) + 3600_000).toISOString();
       return respond(options.occupied ? [{ starts_at, ends_at }] : []);
     }
@@ -66,7 +69,10 @@ test('customer reads remote services, sees busy time, and creates exactly one bo
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const server = await mockBackend(page, { occupied: true });
-  await page.goto('/s/demo/booking');
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/s\/autopremium\/$/);
+  await expect(page.getByRole('heading', { name: /АВТО.*ПРЕМИУМ/ })).toBeVisible();
+  await page.goto('/s/autopremium/booking');
   await expect(page.locator('.service-option')).toHaveCount(1);
   await expect(page.locator('.service-option').first()).toContainText('Сервис Supabase');
   await page.locator('.day-strip button').nth(2).click();
@@ -76,7 +82,7 @@ test('customer reads remote services, sees busy time, and creates exactly one bo
   await page.getByPlaceholder('+7 999 123-45-67').fill('+79991234567');
   await page.getByPlaceholder('Например, BMW 5 серии').fill('BMW M3');
   await page.getByRole('button', { name: /Подтвердить запись/ }).click();
-  await expect(page).toHaveURL(/\/s\/demo\/my$/);
+  await expect(page).toHaveURL(/\/s\/autopremium\/my$/);
   await expect(page.getByText('Вы записаны!')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Тестовый Клиент')).toBeVisible();
@@ -87,7 +93,7 @@ test('customer reads remote services, sees busy time, and creates exactly one bo
 
 test('RPC slot_taken error is shown and rejected slot is cleared', async ({ page }) => {
   await mockBackend(page, { conflict: true });
-  await page.goto('/s/demo/booking');
+  await page.goto('/s/autopremium/booking');
   await page.locator('.day-strip button').nth(2).click();
   await page.locator('.time-grid button:not([disabled])').first().click();
   await page.getByPlaceholder('Александр').fill('Тестовый Клиент');

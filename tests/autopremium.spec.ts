@@ -2,6 +2,16 @@ import { expect, test } from '@playwright/test';
 
 const pagePaths = ['/', '/services', '/booking', '/my'];
 
+test('project homepage opens Auto Premium', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/s\/autopremium\/$/);
+  await expect(page.locator('.brand')).toContainText(/авто премиум/i);
+  await expect(page.locator('.demo-banner')).toContainText('хранится только в вашем браузере');
+  expect(errors).toEqual([]);
+});
+
 for (const width of [320, 390, 760, 1440]) {
   test.describe(`Auto Premium service number palette ${width}px`, () => {
     test.use({ viewport: { width, height: 900 }, isMobile: width <= 760, hasTouch: width <= 760 });

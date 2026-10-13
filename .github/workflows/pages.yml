@@ -1,4 +1,4 @@
-name: Publish demo to GitHub Pages
+name: Publish Auto Premium to GitHub Pages
 
 on:
   push:
@@ -31,7 +31,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - name: Build static GitHub Pages preview
+      - name: Verify Auto Premium Supabase secrets
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [[ "$VITE_SUPABASE_URL" != https://*.supabase.co ]] || [[ -z "$VITE_SUPABASE_ANON_KEY" ]] || [[ "$VITE_SUPABASE_ANON_KEY" == "ВСТАВЬ_КЛЮЧ" ]]; then
+            echo 'Auto Premium deployment stopped: configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in repository Actions secrets.' >&2
+            exit 1
+          fi
+      - name: Build Auto Premium for GitHub Pages
         run: pnpm build
         env:
           # Username.github.io repositories are hosted at the domain root.
