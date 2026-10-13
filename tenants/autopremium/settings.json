@@ -1,0 +1,53 @@
+{
+  "slug": "autopremium",
+  "published": false,
+  "name": "АВТО ПРЕМИУМ",
+  "eyebrow": "СПЕЦИАЛИЗИРОВАННЫЙ АВТОСЕРВИС · НОВОСИБИРСК",
+  "tagline": "Уверенность в каждом километре.",
+  "description": "Диагностика, техническое обслуживание и ремонт Infiniti, Nissan, Lexus, Toyota, Geely и других автомобилей. Запчасти в наличии и под заказ. Новосибирск, Фрунзе, 104Б.",
+  "address": "Новосибирск, улица Фрунзе, 104Б",
+  "phone": "+7 (383) 239-22-10",
+  "timezone": "Asia/Novosibirsk",
+  "currency": "RUB",
+  "hero": "/tenants/autopremium/images/hero.jpg",
+  "logo": "/tenants/autopremium/emblem-light.png",
+  "cancellationHours": 24,
+  "infoCards": [
+    { "icon": "ShieldCheck", "title": "Специализация на марках", "text": "Infiniti, Nissan, Lexus и Toyota — ключевые направления сервиса" },
+    { "icon": "Clock", "title": "Запчасти и расходники", "text": "Подбор оригинальных запчастей и аналогов, наличие и заказ" },
+    { "icon": "Sparkle", "title": "Открытые оценки", "text": "Отзывы клиентов и рейтинг можно проверить в 2ГИС" }
+  ],
+  "schedule": {
+    "0": { "open": "09:00", "close": "18:00" },
+    "1": { "open": "09:00", "close": "20:00" },
+    "2": { "open": "09:00", "close": "20:00" },
+    "3": { "open": "09:00", "close": "20:00" },
+    "4": { "open": "09:00", "close": "20:00" },
+    "5": { "open": "09:00", "close": "20:00" },
+    "6": { "open": "09:00", "close": "18:00" }
+  },
+  "daysOff": [],
+  "services": [
+    { "id": "0a110001-78ea-45a0-9baf-000000000001", "title": "Ремонт Infiniti", "category": "INFINITI", "description": "Ремонт и обслуживание Infiniti. Подбор запчастей в наличии и под заказ.", "price": 1000, "durationMinutes": 90, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000002", "title": "Ремонт Lexus", "category": "LEXUS", "description": "Диагностика, ремонт и обслуживание автомобилей Lexus.", "price": 1000, "durationMinutes": 90, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000003", "title": "Обслуживание Nissan", "category": "NISSAN", "description": "Техническое обслуживание и ремонт автомобилей Nissan.", "price": 1000, "durationMinutes": 90, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000004", "title": "Услуги автоэлектрика", "category": "ДИАГНОСТИКА", "description": "Диагностика и ремонт электронных систем автомобиля.", "price": 1000, "durationMinutes": 60, "bufferMinutes": 15, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000005", "title": "Эндоскопия Infiniti V6", "category": "ДВИГАТЕЛЬ", "description": "Эндоскопия Infiniti FX35/37/QX70: демонтаж и монтаж свечей с диагностикой.", "price": 12000, "durationMinutes": 150, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000006", "title": "Эндоскопия Infiniti QX80 V8", "category": "ДВИГАТЕЛЬ", "description": "Эндоскопия двигателя V8 Infiniti QX80 с доступом через свечные колодцы.", "price": 14400, "durationMinutes": 180, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000007", "title": "Эндоскопия Nissan Patrol Y62", "category": "ДВИГАТЕЛЬ", "description": "Эндоскопия двигателя V8 Nissan Patrol Y62.", "price": 14400, "durationMinutes": 180, "bufferMinutes": 30, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000008", "title": "Прописка датчиков давления", "category": "ШИНЫ", "description": "Привязка датчиков давления после сезонной смены колёс.", "price": 2000, "durationMinutes": 45, "bufferMinutes": 15, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000009", "title": "Шиномонтаж R21", "category": "ШИНЫ", "description": "Шиномонтаж и балансировка комплекта колёс R21.", "price": 8800, "durationMinutes": 90, "bufferMinutes": 20, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000010", "title": "Обслуживание Geely Monjaro", "category": "GEELY", "description": "Диагностика, обслуживание и ремонт Geely Monjaro.", "price": 1000, "durationMinutes": 90, "bufferMinutes": 20, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000011", "title": "Ремонт Volkswagen", "category": "VOLKSWAGEN", "description": "Ремонт автомобилей Volkswagen, запчасти под заказ.", "price": 2000, "durationMinutes": 90, "bufferMinutes": 20, "enabled": true },
+    { "id": "0a110001-78ea-45a0-9baf-000000000012", "title": "Чистка радиаторов", "category": "ОХЛАЖДЕНИЕ", "description": "Профессиональная чистка и мойка радиаторов системы охлаждения.", "price": 6000, "durationMinutes": 180, "bufferMinutes": 30, "enabled": true }
+  ],
+  "bays": [
+    { "id": "0b110001-78ea-45a0-9baf-000000000001", "title": "Демо-бокс 1", "enabled": true },
+    { "id": "0b110001-78ea-45a0-9baf-000000000002", "title": "Демо-бокс 2", "enabled": true }
+  ],
+  "gallery": [
+    { "id": "0c110001-78ea-45a0-9baf-000000000001", "image": "/tenants/autopremium/images/workshop-real.jpg", "caption": "Рабочий бокс автосервиса" },
+    { "id": "0c110001-78ea-45a0-9baf-000000000002", "image": "/tenants/autopremium/images/service-2.jpg", "caption": "Ремонт автомобиля" },
+    { "id": "0c110001-78ea-45a0-9baf-000000000003", "image": "/tenants/autopremium/images/hero.jpg", "caption": "Обслуживание автомобиля" }
+  ]
+}

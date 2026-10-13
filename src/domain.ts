@@ -8,6 +8,7 @@ export const serviceSchema = z.object({
 export const baySchema = z.object({ id: z.string().uuid(), title: z.string().min(1), enabled: z.boolean().default(true) });
 export const hoursSchema = z.object({ open: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), close: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }).nullable();
 export const studioSchema = z.object({
+  id: z.string().uuid().optional(),
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,38}$/),
   published: z.boolean().default(false),
   name: z.string().min(2).max(90), eyebrow: z.string().max(100),

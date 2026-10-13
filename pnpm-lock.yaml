@@ -15,7 +15,7 @@ importers:
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@supabase/supabase-js':
-        specifier: ^2.75.0
+        specifier: ^2.117.3
         version: 2.117.3
       '@tanstack/react-query':
         specifier: ^5.90.0

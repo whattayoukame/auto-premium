@@ -191,8 +191,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid rgba(134,186,255,
 .route-error-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .booking-page > .back-link { display: flex; margin-bottom: 36px; }
 .booking-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(285px, 365px); align-items: start; gap: 35px; margin-top: 58px; }
-.booking-main { display: grid; gap: 17px; min-width: 0; }
-.booking-step { padding: clamp(24px,3vw,38px); border: 1px solid var(--line); background: var(--surface); }
+.booking-main { display: grid; grid-template-columns: minmax(0,1fr); gap: 17px; min-width: 0; }
+.booking-step { min-width: 0; padding: clamp(24px,3vw,38px); border: 1px solid var(--line); background: var(--surface); }
 .step-title { display: flex; align-items: start; gap: 21px; margin-bottom: 27px; }
 .step-title > span { display: grid; place-items: center; width: 43px; height: 43px; flex: 0 0 auto; border: 1px solid rgba(134,186,255,.35); background: rgba(134,186,255,.08); color: var(--blue); font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; }
 .step-title h2 { font-size: clamp(20px,2vw,26px); }
@@ -228,11 +228,11 @@ input:focus, textarea:focus, select:focus { outline: 2px solid rgba(134,186,255,
 .booking-fields input::placeholder, .login-card input::placeholder, .settings-panel input::placeholder { color: #617083; }
 .booking-fields .submit-book { justify-self: stretch; }
 .booking-fields .field-note { color: #738399; font-size: 10px; line-height: 1.5; }
-.booking-summary { position: sticky; top: 20px; padding: 36px; background: linear-gradient(140deg,#19304a,#101b2b 70%); border: 1px solid rgba(134,186,255,.26); }
+.booking-summary { position: sticky; top: 20px; min-width: 0; padding: 36px; background: linear-gradient(140deg,#19304a,#101b2b 70%); border: 1px solid rgba(134,186,255,.26); overflow-wrap: anywhere; }
 .summary-monogram { margin-top: 25px; font-family: 'Space Grotesk',sans-serif; font-size: 62px; font-weight: 700; line-height: 1; }
 .booking-summary h3 { margin: 17px 0 28px; font-size: 25px; line-height: 1.2; }
 .summary-item { display: flex; justify-content: space-between; gap: 15px; padding: 16px 0; border-top: 1px solid rgba(205,224,249,.15); color: #b3c1d3; font-size: 11px; }
-.summary-item strong { max-width: 52%; color: #f3f8ff; font-size: 12px; text-align: right; }
+.summary-item strong { min-width: 0; max-width: 52%; color: #f3f8ff; font-size: 12px; text-align: right; }
 .summary-divider { height: 1px; margin: 20px 0; background: rgba(205,224,249,.15); }
 .booking-summary > p { display: flex; align-items: center; gap: 11px; margin-top: 15px; color: #b4c8df; font-size: 11px; }
 .booking-summary > p svg { color: var(--blue); }
@@ -551,3 +551,13 @@ input:focus, textarea:focus, select:focus { outline: 2px solid rgba(134,186,255,
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+/* Supabase owner route: uses the existing owner-console visual language. */
+.demo-admin { width: 100%; min-height: 100vh; padding: 0 4vw 4rem; }
+.demo-admin .owner-topbar { display: flex; justify-content: space-between; align-items: center; }
+.demo-admin .owner-topbar > div { display: flex; align-items: center; gap: 1.25rem; }
+.demo-admin .owner-topbar button { display: inline-flex; align-items: center; gap: .3rem; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.demo-admin .owner-table-wrap { overflow-x: auto; }
+.demo-admin .owner-table td { vertical-align: middle; }
+.demo-admin .owner-table td:last-child { min-width: 160px; }
+.demo-admin .owner-table .small-action { display: inline-flex; gap: .3rem; align-items: center; margin: .45rem 0; }
+@media(max-width: 760px) { .demo-admin { padding: 0 1rem 2rem; } .demo-admin .owner-heading { gap: 1rem; } }

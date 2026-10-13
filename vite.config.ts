@@ -1,14 +1,21 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { copyFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 // GitHub Pages hosts project sites at /<repository>/ instead of /.
-// Its static server cannot rewrite SPA routes; the Pages build uses hash routes.
+// Its static server cannot rewrite SPA routes; 404.html serves the same SPA shell.
 const pagesBase = process.env.PAGES_BASE;
+const pagesBuild = pagesBase !== undefined;
 
 export default defineConfig({
   base: pagesBase || '/',
-  plugins: [react(), ...(pagesBase ? [] : [VitePWA({
+  define: { __PAGES_BUILD__: JSON.stringify(pagesBuild) },
+  plugins: [react(), ...(pagesBuild ? [{
+    name: 'github-pages-spa-fallback',
+    async closeBundle() { await copyFile(resolve('dist/index.html'), resolve('dist/404.html')); },
+  }] : [VitePWA({
     registerType: 'autoUpdate',
     manifest: false,
     workbox: {
