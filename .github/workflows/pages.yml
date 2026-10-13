@@ -34,9 +34,11 @@ jobs:
           node-version: '24'
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm test
+      - name: Run tests
+        run: pnpm test
 
       - name: Verify Auto Premium Supabase secrets
         env:
@@ -44,9 +46,11 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [[ "$VITE_SUPABASE_URL" != https://*.supabase.co ]]  [[ -z "$VITE_SUPABASE_ANON_KEY" ]]  [[ "$VITE_SUPABASE_ANON_KEY" == "ВСТАВЬ_КЛЮЧ" ]]; then
-            echo 'Auto Premium deployment stopped: configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in repository Actions secrets.' >&2
+            echo 'ERROR: Configure Supabase secrets in GitHub repository settings.' >&2
             exit 1
           fi
+
+          echo 'Supabase environment variables are configured.'
 
       - name: Build Auto Premium for GitHub Pages
         run: pnpm build
@@ -55,11 +59,14 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - uses: actions/configure-pages@v5
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
