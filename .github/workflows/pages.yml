@@ -18,8 +18,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  name: github-pages
+  url: https://whattayoukame.github.io/auto-premium/s/autopremium/
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
