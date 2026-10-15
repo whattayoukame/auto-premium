@@ -6,7 +6,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { ArrowRight, ArrowUpRight, CalendarBlank, CalendarCheck, CalendarPlus, Car, CaretLeft, CheckCircle, Clock, MapPin, ShieldCheck, Sparkle, Phone, XCircle, WarningCircle } from '@phosphor-icons/react';
 import { Button } from '@astryxdesign/core/Button';
 import { api, isLocalTenant, isRemoteStudio } from './api';
-import { bookingInputSchema, minutesText, money, type Booking, type Service } from './domain';
+import { bookingContactSchemas, bookingInputSchema, minutesText, money, type Booking, type Service } from './domain';
 import { hourLabel, localDate, prettyDate } from './slots';
 import { useSlug, useStudio } from './studio-context';
 import { createUUID } from './uuid';
@@ -43,6 +43,24 @@ export function BookingPage(){const s=useStudio(),slug=useSlug(),navigate=useNav
   const [serviceId,setServiceId]=useState(params.get('service')||s.services.find(x=>x.enabled)?.id||'');
   const today=localDate(new Date(),s.timezone);
   const [date,setDate]=useState(today),[time,setTime]=useState('');const [name,setName]=useState(''),[phone,setPhone]=useState(''),[car,setCar]=useState(''),[error,setError]=useState('');
+  type ContactField = 'name' | 'phone' | 'car';
+  const [submitted,setSubmitted]=useState(false);
+  const [touched,setTouched]=useState<Record<ContactField,boolean>>({name:false,phone:false,car:false});
+  const fieldErrors: Record<ContactField,string> = {
+    name: !name.trim() ? 'Укажите ФИО.' : bookingContactSchemas.customerName.safeParse(name).success ? '' : 'ФИО должно содержать от 2 до 100 символов.',
+    phone: !phone.trim() ? 'Укажите номер телефона.' : bookingContactSchemas.phone.safeParse(phone).success ? '' : 'Введите корректный номер телефона (7–15 цифр).',
+    car: !car.trim() ? 'Укажите марку и модель автомобиля.' : bookingContactSchemas.car.safeParse(car).success ? '' : 'Укажите марку и модель (от 2 до 100 символов).',
+  };
+  const showFieldError=(field:ContactField)=>(submitted||touched[field])&&!!fieldErrors[field];
+  const touchField=(field:ContactField)=>setTouched(current=>({...current,[field]:true}));
+  const submitBooking=(event:React.FormEvent<HTMLFormElement>)=>{
+    event.preventDefault();
+    setSubmitted(true);
+    setError('');
+    const invalid=(['name','phone','car'] as const).find(field=>fieldErrors[field]);
+    if(invalid){event.currentTarget.querySelector<HTMLInputElement>(`[name="${invalid}"]`)?.focus();return;}
+    mutation.mutate();
+  };
   const [pendingKey]=useState(createUUID);const selected=s.services.find(x=>x.id===serviceId);
   const days=useMemo(()=>Array.from({length:14},(_,i)=>{const d=addDays(new Date(`${today}T12:00:00Z`),i);return d.toISOString().slice(0,10);}),[today]);
   const avail=useQuery({queryKey:['available',slug,serviceId,date],queryFn:()=>api.availability(slug,serviceId,date),enabled:!!serviceId,refetchInterval:30000});
@@ -55,7 +73,28 @@ export function BookingPage(){const s=useStudio(),slug=useSlug(),navigate=useNav
         {avail.isLoading?<p className="muted" role="status">Проверяем свободные боксы…</p>:avail.isError?<p className="form-error">Не удалось проверить доступность. Повторите попытку.</p>:<div className="time-grid">{avail.data?.available.map(t=><button type="button" key={t} className={time===t?'chosen':''} onClick={()=>{setTime(t);}}>{hourLabel(t,s.timezone)}</button>)}{avail.data?.unavailable.map(t=><button type="button" key={t} className="busy" disabled aria-label={`${hourLabel(t,s.timezone)} занято`}>{hourLabel(t,s.timezone)}<small>занято</small></button>)}</div>}
         {!avail.isLoading&&!avail.data?.available.length&&<p className="availability-empty">На эту дату свободных мест нет. Выберите другой день.</p>}
       </section>
-      <section className="booking-step"><div className="step-title"><span>03</span><div><h2>Ваши данные</h2><p>Чтобы мы знали, кого ждать</p></div></div><form className="booking-fields" onSubmit={e=>{e.preventDefault();setError('');mutation.mutate();}}><label>Ваше имя<input autoComplete="name" value={name} onChange={e=>setName(e.target.value)} placeholder="Александр" required minLength={2} maxLength={100}/></label><label>Телефон<input autoComplete="tel" inputMode="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+7 999 123-45-67" required/></label><label className="full">Марка и модель автомобиля<input value={car} onChange={e=>setCar(e.target.value)} placeholder="Например, BMW 5 серии" required minLength={2}/></label>{error&&<div className="form-error full" role="alert"><WarningCircle size={18}/>{error}</div>}<button type="submit" className="btn btn-primary submit-book full" disabled={!canBook||!selected||!time||mutation.isPending}>{mutation.isPending?'Подтверждаем…':canBook?'Подтвердить запись':'Студия ещё не опубликована'} <ArrowRight size={20}/></button><p className="field-note full">{isRemoteStudio(slug)?"Нажимая «Подтвердить», вы сохраняете данные записи в Supabase. Проверьте, что студия подключена к этому кабинету владельца.":"Демо: запись хранится только в вашем браузере и не поступает в компанию."}</p></form></section>
+      <section className="booking-step"><div className="step-title"><span>03</span><div><h2>Ваши данные</h2><p>Чтобы мы знали, кого ждать</p></div></div>
+        <form className="booking-fields" noValidate onSubmit={submitBooking}>
+          <label className={showFieldError('name')?'booking-field-invalid':''}>
+            <span>ФИО <span aria-hidden="true">*</span></span>
+            <input name="name" autoComplete="name" value={name} onChange={e=>setName(e.target.value)} onBlur={()=>touchField('name')} placeholder="Александр" required minLength={2} maxLength={100} aria-invalid={showFieldError('name')} aria-describedby={showFieldError('name')?'booking-name-error':undefined}/>
+            {showFieldError('name')&&<span className="booking-field-error" id="booking-name-error"><WarningCircle size={15} aria-hidden="true"/>{fieldErrors.name}</span>}
+          </label>
+          <label className={showFieldError('phone')?'booking-field-invalid':''}>
+            <span>Телефон <span aria-hidden="true">*</span></span>
+            <input name="phone" type="tel" autoComplete="tel" inputMode="tel" value={phone} onChange={e=>setPhone(e.target.value)} onBlur={()=>touchField('phone')} placeholder="+7 999 123-45-67" required aria-invalid={showFieldError('phone')} aria-describedby={showFieldError('phone')?'booking-phone-error':undefined}/>
+            {showFieldError('phone')&&<span className="booking-field-error" id="booking-phone-error"><WarningCircle size={15} aria-hidden="true"/>{fieldErrors.phone}</span>}
+          </label>
+          <label className={`full ${showFieldError('car')?'booking-field-invalid':''}`}>
+            <span>Марка и модель автомобиля <span aria-hidden="true">*</span></span>
+            <input name="car" value={car} onChange={e=>setCar(e.target.value)} onBlur={()=>touchField('car')} placeholder="Например, BMW 5 серии" required minLength={2} maxLength={100} aria-invalid={showFieldError('car')} aria-describedby={showFieldError('car')?'booking-car-error':undefined}/>
+            {showFieldError('car')&&<span className="booking-field-error" id="booking-car-error"><WarningCircle size={15} aria-hidden="true"/>{fieldErrors.car}</span>}
+          </label>
+          {error&&<div className="form-error full" role="alert"><WarningCircle size={18}/>{error}</div>}
+          <button type="submit" className="btn btn-primary submit-book full" disabled={!canBook||!selected||!time||mutation.isPending}>{mutation.isPending?'Подтверждаем…':canBook?'Подтвердить запись':'Студия ещё не опубликована'} <ArrowRight size={20}/></button>
+          <p className="field-note full">Поля со звёздочкой обязательны. {isRemoteStudio(slug)?"Нажимая «Подтвердить», вы сохраняете данные записи в Supabase. Проверьте, что студия подключена к этому кабинету владельца.":"Демо: запись хранится только в вашем браузере и не поступает в компанию."}</p>
+        </form>
+      </section>
     </div><aside className="booking-summary"><span className="mini-label">ВАША ЗАПИСЬ</span><div className="summary-monogram">A<span>.</span></div><h3>{selected?.title||'Выберите услугу'}</h3><div className="summary-item"><span>Стоимость</span><strong>{selected?`от ${money(selected.price,s.currency)}`:'—'}</strong></div><div className="summary-item"><span>Длительность</span><strong>{selected?minutesText(selected.durationMinutes):'—'}</strong></div><div className="summary-item"><span>Дата и время</span><strong>{time?prettyDate(time,s.timezone):'Не выбрано'}</strong></div><div className="summary-divider"/><p><ShieldCheck size={18}/> Никакой предоплаты онлайн</p><p><CheckCircle size={18}/> Подтверждение сразу после записи</p></aside></div></div>;
 }
 

@@ -4,14 +4,145 @@
 
 - Record all subsequent project work in this `AGENTS.md` file.
 - The active product and GitHub Pages publication target is «Авто Премиум»; recommend repository name `auto-premium` and use its URLs in all future deployment instructions. Preserve historic ATELIER references where they describe legacy code or previous work.
-- User's workflow: develop the source project on Mac (`/Users/seva/Меню/Projects/повседневка`); GitHub Desktop is installed on a **separate Windows PC only**. Do not assume GitHub Desktop runs on the Mac or run macOS GitHub Desktop compatibility checks. Publication instructions must account for transferring the current sources Mac → Windows → GitHub, preserving the Windows clone's `.git` and never transferring `.env`.
+- User's workflow (updated 2026-10-15): develop source on Mac (`/Users/seva/Меню/Projects/повседневка`); GitHub Desktop is now installed and signed in **on the same Mac**. Publication target is the separate GitHub clone `/Users/seva/Меню/Projects/auto-premium-github`, repository `whattayoukame/auto-premium`. Sync via `UPDATE_GITHUB_MAC.command`, preserving the clone's `.git`, excluding `.env`, and publish through Mac GitHub Desktop. The former Windows transfer process is historic/fallback only.
 - After each task, update the log with the date, request, actions taken, decisions, results, and any outstanding work.
 - Keep standing project rules and decisions in this file so future sessions can continue from them.
 - Do not record passwords, access tokens, or other secrets.
 - Keep entries concise and factual; revise earlier entries if a decision changes.
 - Before declaring mobile UI changes complete, verify the actual interactive journeys (CTA -> destination, service selection, slot selection, booking creation, confirmation and cancellation) in addition to build/typecheck and UI hit-testing. Check browser runtime errors and, when possible, a non-HTTPS LAN origin and iOS Safari standalone mode. Clearly disclose when browser/device checks cannot be run; never claim unexecuted checks passed.
 
+## FIRST PRIORITY WHEN DEVELOPMENT RESUMES — Auto Premium release blockers (2026-10-14)
+
+- **User decision:** Pause technical remediation now to prepare and deliver a prospective-client presentation. At the **very beginning of the next Auto Premium development session**, proactively remind the user of these **four unresolved critical checks** and make them the first work items **before final publication, handover, or accepting real bookings**:
+  1. **Live booking end to end:** Submit a real test booking; verify it appears in CRM, a busy time cannot be booked twice (including simultaneous requests), and cancellation releases the slot.
+  2. **Supabase access and database safety:** Verify production RLS/GRANT and owner isolation, prevent unauthorized access to customer phones/bookings/payments, and inspect the actual `create_booking` RPC, concurrency protections and idempotency.
+  3. **Published routing:** Open the GitHub Pages homepage, services, booking and owner login via direct links, test refresh/navigation and browser errors on the deployed version. A direct SPA URL currently responds 404 with fallback HTML; browser behavior remains unverified.
+  4. **Release-facing content:** Remove or replace visible demo/unofficial/concept wording and technical Supabase references once appropriate for a real client release; verify permissions for branding and imagery.
+- **Status:** All four checks are **OPEN**. Previous mocked tests/builds are not substitutes for real production verification. A presentation may proceed with a clearly identified preview/test environment; do not characterize unverified data safety as production-ready. The user wants to review findings before changes; do not start these fixes during the presentation task unless newly requested.
+
 ## Work log
+
+### 2026-10-15 — Prepare direct Mac-to-GitHub publication
+
+- **Request:** User installed and signed in to GitHub Desktop on Mac and requested remaining steps and maximum automation of Auto Premium deployment.
+- **Checks:** Mac GitHub Desktop app exists; the source repository is connected to `https://github.com/whattayoukame/auto-premium.git` but local `main` is behind remote `main` and contains newer uncommitted changes. Remote HEAD observed `5ea5704`. The source has a valid GitHub Pages workflow, and previous `pnpm build` and 3 unit tests passed. Direct command-line Git push authentication was not available via the system Git credential helper. `https://whattayoukame.github.io/auto-premium/s/autopremium/` returned HTTP 404 to a HEAD request; SPA fallback behavior requires a browser check.
+- **Actions/result:** Cloned the existing GitHub `main` to `/Users/seva/Меню/Projects/auto-premium-github` and transferred current source changes via `UPDATE_GITHUB_MAC.command`; opened the clone in GitHub Desktop. Added `START_HERE_MAC.md`, changed deployment documentation to make Mac the primary route, retained legacy Windows steps, excluded `.env`/Git history/dependency/build folders, and confirmed `.env` is absent from clone. The original source project's working tree was preserved. Validated clone with `pnpm install --frozen-lockfile`, unit tests **3/3**, Pages-based production build, matching `dist/index.html` and `dist/404.html`, correct `/auto-premium/assets/` references, `git diff --check`, and mocked Supabase Chrome Playwright **11/11**. Existing nonblocking Vite warnings remain. Created one local Git commit atop the current `origin/main` (no forced update).
+- **Outstanding:** Push the prepared local commit via signed-in GitHub Desktop (CLI authentication still unavailable), then verify Actions, live site, routing and four release blockers. Live database RLS, real booking, applied status/payment migrations and physical iPhone Safari remain unverified. Do not claim a production-ready booking system from mocked tests/build alone.
+
+### 2026-10-15 — Open Auto Premium dev site from a phone over LAN
+
+- **Request:** User asked for the address and steps to open the running local website on a phone.
+- **Read-only checks:** `pnpm dev` uses Vite `--host 0.0.0.0`; a Node server is listening on port 5173; Mac Wi-Fi `en0` currently has `192.168.0.50`. Both loopback root and `http://192.168.0.50:5173/s/autopremium/` returned HTTP 200 from the Mac.
+- **Guidance/decision:** Use the LAN URL in mobile Safari/Chrome while phone and Mac share the same Wi-Fi; keep Vite running. If unreachable, check guest-network isolation, firewall and updated Mac IP. No app or Supabase data changed.
+- **Outstanding:** Real-phone rendering and interactions remain unverified; the four release checks remain open.
+
+### 2026-10-14 — Defer four release checks until after client presentation
+
+- **Request:** User asked to remember and proactively surface the four most critical release checks immediately when Auto Premium development resumes; presentation preparation takes priority now.
+- **Action/decision:** Pinned the numbered release-blocker checklist as a standing first-priority instruction above the work log. No product source, Supabase configuration, GitHub deployment, or booking data changed.
+- **Outstanding:** All four checks are open; remind the user at the start of the next development session and only then resume verification and fixes before production handover.
+
+### 2026-10-14 — Auto Premium live CRM dashboard and booking filters
+
+- **Request:** Extend live Supabase `/admin` with «Обзор» and «Записи» sidebar sections, opening «Записи» after login; show visits today/last seven days, completed works and actual receipts; filter bookings by today, next seven calendar days and all dates. Keep the studio's coffee/gold palette, Russian locale and the seven-column status/action table.
+- **Actions:** Implemented overview, upcoming bookings and timezone-aware filtering/counts; retained Russian dates and distinct status controls. Paginated Supabase booking queries. Added owner-only payment/refund ledger SQL in `supabase/autopremium-payments.sql`, bookkeeping UI, operation UUID for safe retries and kopeck precision. Extended the mocked Supabase backend to cover ledger requests and records.
+- **Verification:** `pnpm build` passed with existing nonblocking Vite warnings; `pnpm test` **3/3**; mocked Supabase Playwright **11/11**, including desktop 1440px/mobile 390px, en-US browser locale with Russian dates, login default section, periods, metrics, booking creation/status/cancellation, and 299,50 ₽ receipt minus 40,20 ₽ refund yielding 259,30 ₽ net. Browser page errors and mobile document overflow checked.
+- **Limitations/outstanding:** The payment ledger migration was prepared locally only; until applied, revenue displays «—» plus a setup notice. Visits use «Готово»/«Завершено» and scheduled dates because actual arrival timestamps are unavailable. No production Supabase writes, deployment, physical iOS Safari/standalone or non-HTTPS LAN browser checks were performed. Source remains on Mac; publication via Windows GitHub Desktop requires refreshed transfer files excluding `.env` and preserving the Windows checkout's `.git`.
+
+### 2026-10-14 — Distinct colors for Auto Premium /admin status badges
+
+- **Request/authorization:** User confirmed changing «Готово» to yellow to indicate a client has arrived and service is still pending, while preserving «Новое» blue, «Завершено» green and «Отменено» red.
+- **Actions/decision:** Scope a yellow `.status-tag.ready` style to `/admin`, add a Russian explanatory tooltip and browser assertions for all four status colors and the ready tooltip at 390px/1440px. Status codes and data migrations remain unchanged.
+- **Verification:** `pnpm build` (TypeScript + Vite) passed with existing nonblocking warnings; Vitest **3/3** passed; mocked Supabase Chrome Playwright **8/8** passed, including exact badge colors, tooltip, status transitions and column alignment at 390px/1440px; `git diff --check` passed.
+- **Outstanding:** Changes remain local and are not yet deployed. The existing Windows transfer ZIP is stale and must be refreshed before publication. No live Supabase, physical iPhone Safari/standalone, or non-HTTPS LAN run was performed during this task.
+
+### 2026-10-14 — Refine Auto Premium admin status wording
+
+- **Request:** Replace overlapping-sounding admin status labels with precisely four user-defined choices: «Новое», «Готово», «Завершено», «Отменено».
+- **Actions/decision:** Changed status badges and selector labels in `src/demo-admin.tsx`, including backward-compatible handling of `new` and `arrived`; kept distinct storage codes (`reserved`, `ready`, `completed`, `cancelled`). Updated mocked E2E expectations and Windows/GitHub deployment guides. Existing booking-status SQL migration remains applicable without changes.
+- **Verification:** `pnpm build` passed (TypeScript + Vite; existing nonblocking warnings), `pnpm test` passed 3/3, `git diff --check` passed, and mocked Chrome Supabase Playwright passed **8/8**, including exact Russian selector labels, status transitions, and 390px/1440px admin layout.
+- **Delivery/outstanding:** An attempted refresh of the 14 October Mac→Windows ZIP was blocked by automatic safety review before execution, so the existing ZIP does **not** yet contain these wording changes. Refresh the archive (excluding `.env`, `.git`, dependencies and build artifacts) once execution is approved. Live Supabase migration, remote deployment and physical iPhone testing are still pending.
+
+### 2026-10-14 — Russian Auto Premium admin and booking status controls
+
+- **Request/authorization:** After explicit confirmation, make `/admin` entirely Russian regardless of browser/system locale; separate the blue “new” status from its adjacent cancellation control; provide status actions for new, ready, completed, and cancelled bookings.
+- **Actions:** Forced Russian `date-fns` locale for admin dates; localized login, messages, status badges and labels (`new`/`reserved` → «Новая»); split table into «СТАТУС» and right-aligned «ДЕЙСТВИЯ» columns with a status selector, cancellation confirmation and failure feedback. Added concurrent-update protection in remote booking status updates and a separate, rerunnable Supabase SQL migration `supabase/autopremium-status-actions.sql` expanding permitted statuses and owner permissions. Updated setup SQL, Windows transfer/publishing instructions, and mocked browser tests for 390px/1440px in English browser locale.
+- **Verification:** Mocked Supabase Chrome Playwright **8/8 passed** (including Russian October date, layout, all status transitions, customer booking, errors); local-mode Chrome Playwright **36/36 passed** (including mobile/desktop booking and cancellation); previous TypeScript/Vite build and Vitest **3/3** passed prior to the final login-error wording change. Retrieval of the final `pnpm build && pnpm test && git diff --check` result was blocked by automated review, so the outcome of that last command is unconfirmed. An earlier combined browser run with incompatible remote/local fixtures was stopped; its failures are not valid local-mode regressions.
+- **Delivery/outstanding:** Source package `auto-premium-transfer-2026-10-14.zip` prepared on the Mac Desktop, excluding `.env`, `.git` and build/dependency files. The new migration has **not** been applied to live Supabase; user must run it in SQL Editor, transfer the ZIP to the existing Windows GitHub Desktop clone (preserving `.git`), commit/push `auto-premium`, then verify production statuses and Realtime. No deployment or physical iPhone Safari/standalone test was performed.
+
+### 2026-10-13 — Verify complete Auto Premium GitHub Pages YAML for copy/paste
+
+- **Request:** User pasted a corrupted GitHub Actions `pages.yml` and requested a fully corrected, ready-to-paste workflow after exit code 2.
+- **Findings:** The pasted `environment.url` contains a Markdown link plus broken indentation before `steps`; the Supabase secret-check `if` contains Markdown link syntax and lacks `||` between Bash conditions. These cause YAML and shell parsing errors.
+- **Action/verification:** Compared against the already corrected macOS source `.github/workflows/pages.yml`. Ruby YAML parsing, expected environment URL, and `bash -n` on the workflow verification script all passed. A supplementary local dry-run of mock secret values was blocked by automatic safety review before execution; that runtime check is unconfirmed.
+- **Result/outstanding:** Provide the entire verified workflow as plain YAML for the user to replace in GitHub, then commit directly to `main` and inspect the new Actions run. No remote edit, CI execution, or live booking test was performed in this turn.
+
+### 2026-10-13 — Repair GitHub Pages workflow YAML indentation
+
+- **Request:** User's manually edited workflow failed around line 23 and requested a corrected complete `pages.yml` to paste into GitHub.
+- **Diagnosis:** Read current GitHub `main` file: the `name` and `url` fields were aligned outside `jobs.deploy.environment`, invalidating YAML; the existing macOS source workflow already has the correct indentation. A copy in chat also showed garbled URL/check syntax, so recommend replacing the entire workflow editor contents using a plain YAML block.
+- **Action/Decision:** Set the canonical macOS source workflow's environment URL to `https://whattayoukame.github.io/auto-premium/s/autopremium/`, preserving successful build steps and the Supabase public-key check. Provide the full checked YAML for direct GitHub editor replacement; do not change remote `main` without the user's final publishing step.
+- **Verification:** Ruby YAML parser successfully loaded the corrected workflow; verified nested `jobs.deploy.environment.url` and nine or more defined steps. No GitHub CI run was started by the assistant.
+- **Outstanding:** User must replace `.github/workflows/pages.yml` in GitHub, commit to `main` and check the latest Actions run; then verify live Pages URL and real booking/admin. Earlier successful deployment should remain accessible while YAML configuration is corrected.
+
+
+### 2026-10-13 — GitHub deploy link opens former `/s/demo/`
+
+- **Request:** User asks why clicking the successful GitHub Actions deployment link opens the former demo site and how to make it open `/s/autopremium/`; requested instructions rather than editing the site.
+- **Read-only verification:** Remote `main` workflow `.github/workflows/pages.yml` has `environment.url: ${{ steps.deployment.outputs.page_url }}`. Latest successful run #3 (`d13efb1`) logs explicitly say `Evaluated environment url: https://whattayoukame.github.io/auto-premium/`. Current `src/main.tsx` redirects `/` to `/s/autopremium/`; previous commit `d1591f6` redirected `/` to `/s/demo/` whenever Supabase was configured. The user's different results in browsers suggest stale page resources/browser cache; no deploy failure was observed.
+- **Guidance/Result:** Explain direct visit and cache refresh/site-data clearing; to make the deployment card itself point straight to the studio page, edit workflow `environment.url` to `https://whattayoukame.github.io/auto-premium/s/autopremium/`, commit on `main` and wait for a new successful Action. Existing Pages site root URL remains unchanged. No source or remote workflow edit, new deployment or live booking verification in this task.
+
+
+### 2026-10-13 — GitHub Pages latest workflow confirmed by screenshots
+
+- **Request:** User asked what “open the latest run” means and supplied GitHub Actions screenshots.
+- **Evidence/Result:** The newest Actions row is `Publish Auto Premium with Supabase` run `#3`, on `main` at commit `d13efb1`. User already opened its Summary; it shows `Success` and a green `deploy` job (`2m 1s`), with a GitHub Pages link on the deploy card. Older failed run is superseded. Nonblocking Node.js 20 deprecation and upcoming Ubuntu runner migration annotations are present.
+- **Outstanding:** User should open the deployed Pages link and verify correct Auto Premium home page, Supabase services, actual booking/admin/cancellation flows, and phone access. No live site or Supabase transaction was verified in this turn.
+
+
+### 2026-10-13 — Auto Premium transfer reached GitHub Desktop Changes
+
+- **Request:** User reports Windows GitHub Desktop lists transferred files as orange `Modified` and asks whether to proceed.
+- **Guidance/Decision:** `Modified` means a tracked file differs from the previous commit; green `Added` indicates a newly tracked file. Both are expected after copying the current Auto Premium source over the old Windows checkout. Before committing, verify the selected existing repository, current `main` branch, Auto Premium files and Pages workflow, and absence of `.env`/credentials from Changes; then commit, push, and check GitHub Pages Actions deployment.
+- **Result/Outstanding:** User reports Changes are visible; no remote commit, push, Pages build or live booking has been verified by the assistant. Follow through with Windows upload and real Supabase booking/admin checks.
+
+
+### 2026-10-13 — Next deployment stage after GitHub secrets
+
+- **Request:** User reported completing both GitHub Actions Supabase secrets and asked to proceed to the next stage.
+- **Actions/Decision:** Checked `/Users/seva/Desktop/auto-premium-transfer-2026-10-13.zip` (1.8 MB, 58 files, archive integrity OK), confirmed it includes the current `src/lib/remote-bookings.ts`, `.github/workflows/pages.yml`, Auto Premium app/assets, and Windows instructions; `.env` and `.git` are absent. Proceed with guided Mac-to-Windows transfer into the **existing** GitHub Desktop repository, preserving the Windows clone's `.git`; do not create a replacement repository or publish the obsolete ATELIER sources.
+- **Result/Outstanding:** Archive is ready. User still needs to transfer, extract, copy contents into the existing Windows clone, commit/push, select GitHub Actions as Pages source, verify deployment, and test the real Supabase booking/admin flow. GitHub secrets have been reported configured by user but were not independently inspected; no remote deploy or live database write performed.
+
+### 2026-10-13 — User confirmed Auto Premium has 12 services
+
+- **Request/Result:** User confirmed the Supabase verification query returned 12 services for studio `autopremium`, after successful execution of `supabase/autopremium-setup.sql`.
+- **Next:** Create or select the studio owner in Supabase Authentication → Users, copy the user's UID, insert the matching `studio_owners(user_id, studio_id)` membership, and verify it with a read-only query. Then proceed to GitHub Actions secrets and Windows deployment. No further remote mutations or live booking tests were performed in this turn.
+
+### 2026-10-13 — User reported successful Auto Premium SQL setup
+
+- **Request/Result:** User reported `Success` after executing `supabase/autopremium-setup.sql` in the Supabase SQL Editor. This reports successful SQL execution; database rows and owner access have not yet been independently verified.
+- **Guidance:** Next run a read-only query joining `studios` and `services` to confirm `slug='autopremium'` has 12 services. Then create or select the owner in Authentication → Users, copy that user's UID and insert the matching `studio_owners` membership, verify access, and continue configuring GitHub Actions secrets and Windows deployment.
+- **Outstanding:** User to report verification query output and complete owner binding; no direct database operations, GitHub push or live booking tests performed in this turn.
+
+### 2026-10-13 — Supabase booking overlap constraint confirmed
+
+- **Request/Evidence:** User provided the complete live `no_overlap` constraint: `EXCLUDE USING gist (studio_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE ((status <> 'cancelled'::text))`.
+- **Result:** Together with the previously shown `UNIQUE (idempotency_key)` and the reviewed `create_booking`/`get_busy` signatures, the schema confirms database-backed overlap prevention for active bookings and release of cancelled slots. This clears the specific constraint check that blocked the next setup step; no live database mutation or actual booking test was performed here.
+- **Next:** User can apply the current `supabase/autopremium-setup.sql` in Supabase SQL Editor, check that `studios.slug='autopremium'` and the service count is 12, then create/link an owner account, configure GitHub Actions secrets and publish from Windows.
+
+### 2026-10-13 — Supabase bookings constraint screenshot
+
+- **Request:** User sent the result of the read-only `bookings` constraint inspection for Auto Premium and asked for the next step.
+- **Evidence/Decision:** Screenshot confirms `bookings_idempotency_key_key` is `UNIQUE(idempotency_key)` and `no_overlap` is a GiST `EXCLUDE` constraint on studio ID and an overlapping `tstzrange(starts_at, ends_at)`. The displayed `no_overlap` definition is truncated; its predicate excluding `cancelled` records cannot yet be verified, so whether cancellation frees slots is unconfirmed.
+- **Guidance/Result:** Instruct user to read `pg_get_expr(i.indpred, i.indrelid)` for the `no_overlap` constraint's index and confirm the predicate is `status <> 'cancelled'`. Only then proceed with the reviewed `supabase/autopremium-setup.sql` in SQL Editor, check `autopremium` and 12 services, and link the owner. No live database write or new test was performed for this screenshot review.
+
+### 2026-10-13 — Review actual Supabase booking RPC definitions
+
+- **Request:** User provided the live SQL definitions of `public.create_booking` and `public.get_busy` to check compatibility and continue the Auto Premium setup after PostgreSQL error 42883.
+- **Inspection/Decision:** Provided RPC argument names, types and `SECURITY DEFINER` match the current `supabase/autopremium-setup.sql`: `create_booking(..., p_key text) returns uuid` and `get_busy(p_studio uuid, p_from timestamptz, p_to timestamptz)` returns intervals. `get_busy` excludes cancelled bookings; `create_booking` relies on a database exclusion constraint for `slot_taken` and a unique index on `bookings.idempotency_key` for `ON CONFLICT`, neither of which can be verified from function bodies alone. The former UUID-only signature assumption caused error 42883; current setup detects `text` or `uuid` dynamically.
+- **Actions:** Fixed Supabase owner list mapping to read actual `client_name` and `client_phone` columns (with older schema fallbacks); changed mocked booking fixture to actual column names and asserted the phone appears in the owner table. Added read-only index/constraint diagnostic SQL and gating guidance to `START_HERE_WINDOWS.md`. Updated and integrity-checked the existing Mac Desktop transfer ZIP with all four modified files, preserving its exclusions and 58 entries.
+- **Verification/Result:** Local `pnpm build` passed; mocked Supabase Playwright **3/3 passed** (customer booking, occupied slot, owner login/list/cancel). No live Supabase database changes were executed.
+- **Outstanding:** User must execute the read-only `bookings` index/constraint query in Supabase; if uniqueness and overlap exclusion are present, apply `supabase/autopremium-setup.sql` and continue with `studio_owners`/GitHub secrets/Windows publication. Verify real network/booking and owner flows before production.
 
 ### 2026-10-13 — Windows transfer package and launch map
 

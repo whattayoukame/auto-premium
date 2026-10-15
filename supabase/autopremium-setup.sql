@@ -146,6 +146,21 @@ create policy "owner cancels studio bookings" on public.bookings
   with check (status = 'cancelled' and exists (select 1 from public.studio_owners so
     where so.studio_id = bookings.studio_id and so.user_id = (select auth.uid())));
 
+-- For an already configured database, also run autopremium-status-actions.sql
+-- to expand the legacy status CHECK constraint without rerunning this setup.
+drop policy if exists "owner updates autopremium booking statuses" on public.bookings;
+create policy "owner updates autopremium booking statuses" on public.bookings
+  for update to authenticated
+  using (exists (select 1 from public.studio_owners so
+    join public.studios s on s.id = so.studio_id
+    where so.studio_id = bookings.studio_id and so.user_id = (select auth.uid())
+      and s.slug = 'autopremium'))
+  with check (status in ('new','reserved','ready','completed','cancelled') and
+    exists (select 1 from public.studio_owners so
+      join public.studios s on s.id = so.studio_id
+      where so.studio_id = bookings.studio_id and so.user_id = (select auth.uid())
+        and s.slug = 'autopremium'));
+
 grant select on public.studios, public.services to anon, authenticated;
 grant select on public.studio_owners, public.bookings to authenticated;
 revoke select, insert, update, delete on public.bookings from anon;

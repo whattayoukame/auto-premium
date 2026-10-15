@@ -2,7 +2,7 @@ import { addDays } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import atelierTemplate from '../../tenants/atelier/settings.json';
 import autoPremiumTemplate from '../../tenants/autopremium/settings.json';
-import { studioSchema, type Availability, type Booking, type BookingInput, type Studio } from '../domain';
+import { studioSchema, type Availability, type Booking, type BookingInput, type BookingStatus, type Studio } from '../domain';
 import { calculateAvailability } from '../slots';
 import { requireSupabase } from './supabase';
 
@@ -108,29 +108,93 @@ export function readRemoteReceipt(slug: string, id: string): Booking {
   return booking;
 }
 
-export type AdminBooking = Booking;
+// Older live reservations use `new`; newer installations use `reserved`.
+export type AdminBookingStatus = BookingStatus | 'new';
+export type AdminBooking = Omit<Booking, 'status'> & { status: AdminBookingStatus };
+export type AdminEditableStatus = 'reserved' | 'ready' | 'completed' | 'cancelled';
+export type AdminPayment = {
+  id: string; bookingId: string; amount: number; type: 'payment' | 'refund'; createdAt: string;
+};
+function firstFilled(...values: unknown[]): string {
+  return values.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim() ?? '';
+}
+
 export async function remoteAdminBookings(slug: string): Promise<AdminBooking[]> {
   const studio = await remoteStudio(slug);
-  const { data, error } = await requireSupabase().from('bookings').select('*')
-    .eq('studio_id', studio.id).order('starts_at', { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(row => ({
+  // PostgREST commonly caps responses at 1000 rows. Fetch every page so filters
+  // and historical counts do not silently omit older bookings.
+  const rows: Record<string, any>[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await requireSupabase().from('bookings').select('*')
+      .eq('studio_id', studio.id).order('starts_at', { ascending: true }).range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows.map(row => ({
     id: row.id,
     studioId: row.studio_id,
     serviceId: row.service_id,
     serviceTitle: studio.services.find(x => x.id === row.service_id)?.title ?? 'Неизвестная услуга',
-    customerName: row.customer_name ?? row.name ?? '',
-    phone: row.phone ?? '', car: row.car ?? '',
+    customerName: firstFilled(row.client_name, row.customer_name, row.name, row.full_name),
+    phone: firstFilled(row.client_phone, row.phone, row.phone_number), car: row.car ?? '',
     startsAt: row.starts_at, endsAt: row.ends_at,
     status: row.status ?? 'reserved', createdAt: row.created_at ?? row.starts_at,
   }));
 }
 
-export async function cancelRemoteBooking(slug: string, id: string): Promise<void> {
+function missingPaymentTable(error: { code?: string; message?: string }): boolean {
+  return error.code === '42P01' || error.code === 'PGRST205'
+    || /could not find the table.*autopremium_payments/i.test(error.message ?? '');
+}
+
+// null means the payment ledger is not installed yet; [] means installed with no receipts.
+export async function remoteAdminPayments(slug: string): Promise<AdminPayment[] | null> {
+  const studio = await remoteStudio(slug);
+  const rows: AdminPayment[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await requireSupabase().from('autopremium_payments')
+      .select('id, booking_id, amount, type, created_at')
+      .eq('studio_id', studio.id).order('created_at', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) {
+      if (missingPaymentTable(error)) return null;
+      throw error;
+    }
+    rows.push(...(data ?? []).map(row => ({
+      id: row.id, bookingId: row.booking_id, amount: Number(row.amount),
+      type: row.type, createdAt: row.created_at,
+    })));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+export async function recordRemotePayment(
+  slug: string, bookingId: string, amount: number, type: 'payment' | 'refund', operationId: string,
+): Promise<void> {
+  if (!Number.isFinite(amount) || amount <= 0
+      || Math.abs(Math.round(amount * 100) - amount * 100) > 1e-6) {
+    throw new Error('Введите положительную сумму с точностью до копеек.');
+  }
+  const studio = await remoteStudio(slug);
+  const { error } = await requireSupabase().from('autopremium_payments').insert({
+    id: operationId, studio_id: studio.id, booking_id: bookingId, amount: Math.round(amount * 100) / 100, type,
+  });
+  // A retry after a lost network response reuses the same UUID. The database
+  // primary key prevents the receipt/refund from being counted twice.
+  if (error && error.code !== '23505') throw error;
+}
+
+export async function updateRemoteBookingStatus(
+  slug: string, id: string, previousStatus: AdminBookingStatus, nextStatus: AdminEditableStatus,
+): Promise<void> {
   const studio = await remoteStudio(slug);
   const { data, error } = await requireSupabase().from('bookings')
-    .update({ status: 'cancelled' }).eq('studio_id', studio.id).eq('id', id)
-    .select('id').single();
+    .update({ status: nextStatus }).eq('studio_id', studio.id).eq('id', id)
+    .eq('status', previousStatus).select('id').maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error('Запись не найдена или недостаточно прав');
+  if (!data) throw new Error('Статус записи уже изменился или недостаточно прав. Обновите список.');
 }

@@ -29,9 +29,16 @@ export type BookingStatus = 'reserved' | 'arrived' | 'ready' | 'completed' | 'ca
 export type Booking = { id: string; studioId?: string; serviceId: string; serviceTitle: string; bayId?: string;
   customerName: string; phone: string; car: string; startsAt: string; endsAt: string; status: BookingStatus;
   cancellationToken?: string; createdAt: string };
+export const bookingContactSchemas = {
+  customerName: z.string().trim().min(2).max(100),
+  phone: z.string().trim().regex(/^\+?[\d\s()\-]{7,22}$/).refine(value => {
+    const digits = value.replace(/\D/g, '').length;
+    return digits >= 7 && digits <= 15;
+  }),
+  car: z.string().trim().min(2).max(100),
+};
 export const bookingInputSchema = z.object({ serviceId: z.string().uuid(), startsAt: z.string().datetime(),
-  customerName: z.string().trim().min(2).max(100), phone: z.string().trim().regex(/^\+?[\d\s()\-]{7,22}$/),
-  car: z.string().trim().min(2).max(100), idempotencyKey: z.string().uuid() });
+  ...bookingContactSchemas, idempotencyKey: z.string().uuid() });
 export type BookingInput = z.infer<typeof bookingInputSchema>;
 export type Availability = { available: string[]; unavailable: string[]; date: string };
 export type Overview = { bookings: Booking[]; payments: { id: string; bookingId: string; amount: number; type: 'payment'|'refund'; createdAt: string }[] };
