@@ -12,6 +12,17 @@ create table if not exists public.autopremium_payments (
   created_at timestamptz not null default now()
 );
 
+-- For installs where the archive migration was applied first.
+do $$
+begin
+  if to_regprocedure('public.autopremium_guard_payment_booking()') is not null then
+    drop trigger if exists autopremium_guard_payment_booking on public.autopremium_payments;
+    create trigger autopremium_guard_payment_booking
+      before insert on public.autopremium_payments
+      for each row execute function public.autopremium_guard_payment_booking();
+  end if;
+end $$;
+
 create index if not exists autopremium_payments_studio_date
   on public.autopremium_payments(studio_id, created_at);
 
@@ -37,6 +48,7 @@ create policy "autopremium owner records payments" on public.autopremium_payment
       join public.bookings b on b.studio_id = so.studio_id
       where so.studio_id = autopremium_payments.studio_id
         and b.id = autopremium_payments.booking_id
+        and (to_jsonb(b)->>'deleted_at') is null
         and so.user_id = (select auth.uid()) and s.slug = 'autopremium'
     )
   );

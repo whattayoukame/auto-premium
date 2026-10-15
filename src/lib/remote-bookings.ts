@@ -132,7 +132,7 @@ export async function remoteAdminBookings(slug: string): Promise<AdminBooking[]>
     rows.push(...(data ?? []));
     if (!data || data.length < pageSize) break;
   }
-  return rows.map(row => ({
+  return rows.filter(row => row.deleted_at == null).map(row => ({
     id: row.id,
     studioId: row.studio_id,
     serviceId: row.service_id,
@@ -197,4 +197,14 @@ export async function updateRemoteBookingStatus(
     .eq('status', previousStatus).select('id').maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('Статус записи уже изменился или недостаточно прав. Обновите список.');
+}
+
+// Owners archive a booking through a security-checked RPC. The database keeps
+// the record for audit, releases its slot, and rejects records with payments.
+export async function archiveRemoteBooking(slug: string, id: string): Promise<void> {
+  const studio = await remoteStudio(slug);
+  const { error } = await requireSupabase().rpc('autopremium_archive_booking', {
+    p_studio: studio.id, p_booking: id,
+  });
+  if (error) throw error;
 }

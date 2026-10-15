@@ -33,8 +33,8 @@ fi
 echo 'Проверяю последние изменения на GitHub…'
 git -C "$TARGET" pull --ff-only origin main
 
-echo 'Копирую обновлённые исходники без локальных секретов и кэшей…'
-rsync -a \
+echo 'Синхронизирую исходники, удаляя устаревшие файлы и сохраняя Git, секреты и кэши…'
+rsync -a --delete \
   --exclude='.git/' \
   --include='.env.example' \
   --exclude='.env*' \

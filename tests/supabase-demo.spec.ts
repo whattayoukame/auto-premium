@@ -18,13 +18,15 @@ type MockBooking = { id: string; name: string; startsAt: string; status: 'new' |
 
 async function mockBackend(page: Page, options: {
   occupied?: boolean; conflict?: boolean; blankAliases?: boolean; initialStatus?: 'new' | 'reserved';
-  initialDate?: string; paymentsEnabled?: boolean; extraBookings?: MockBooking[];
+  initialDate?: string; paymentsEnabled?: boolean; extraBookings?: MockBooking[]; archiveError?: string;
 } = {}) {
   const calls: SubmittedBooking[] = [];
   let lastStart = new Date(Date.now() + 3 * 86400_000).toISOString();
   let cancelled = false;
   let bookingStatus = options.initialStatus ?? 'reserved';
   const updates: string[] = [];
+  const archived = new Set<string>();
+  const archiveCalls: string[] = [];
   const ledger: { id: string; booking_id: string; amount: number; type: string; created_at: string }[] = [];
   if (options.initialDate) lastStart = options.initialDate;
   await page.route('**/rest/v1/**', async route => {
@@ -64,6 +66,18 @@ async function mockBackend(page: Page, options: {
       if (options.conflict) return respond({ code: 'P0001', message: 'slot_taken' }, 400);
       return respond(bookingId);
     }
+    if (path.endsWith('/rpc/autopremium_archive_booking')) {
+      const body = route.request().postDataJSON() as { p_studio: string; p_booking: string };
+      expect(body.p_studio).toBe(studioId);
+      archiveCalls.push(body.p_booking);
+      if (options.archiveError) return respond({ code: 'P0001', message: options.archiveError }, 400);
+      if (ledger.some(payment => payment.booking_id === body.p_booking)) {
+        return respond({ code: 'P0001', message: 'booking_has_payments' }, 400);
+      }
+      archived.add(body.p_booking);
+      cancelled = true;
+      return respond(null, 204);
+    }
     if (path.endsWith('/bookings')) {
       if (route.request().method() === 'PATCH') {
         const update = route.request().postDataJSON() as { status: typeof bookingStatus };
@@ -84,7 +98,7 @@ async function mockBackend(page: Page, options: {
           id: row.id, studio_id: studioId, service_id: serviceId, client_name: row.name,
           client_phone: '+79991234567', car: 'BMW', starts_at: row.startsAt,
           ends_at: new Date(Date.parse(row.startsAt) + 3600_000).toISOString(), status: row.status,
-        }))]);
+        }))].filter(row => !archived.has(row.id)));
     }
     throw new Error(`Unexpected REST URL: ${path}`);
   });
@@ -99,7 +113,7 @@ async function mockBackend(page: Page, options: {
     if (url.pathname.endsWith('/user')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify(user) });
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
   });
-  return { calls, updates, ledger, wasCancelled: () => cancelled };
+  return { calls, updates, ledger, archiveCalls, wasCancelled: () => cancelled };
 }
 
 test('customer reads remote services, sees busy time, and creates exactly one booking', async ({ page }) => {
@@ -282,6 +296,65 @@ test(`owner sees Russian month and can change each booking status with separate 
   expect(errors).toEqual([]);
 });
 }
+
+for (const width of [390, 1440]) {
+  test(`owner archives only after confirming and CRM updates (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const server = await mockBackend(page, { initialDate: '2026-10-14T02:00:00Z' });
+    await loginOwner(page);
+
+    const row = page.getByRole('row', { name: /Тестовый Клиент/ });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: 'Удалить' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Точно удалить запись?');
+    await expect(dialog).toContainText('Тестовый Клиент');
+    expect(server.archiveCalls).toEqual([]);
+
+    await dialog.getByRole('button', { name: 'Оставить запись' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(row).toBeVisible();
+    expect(server.archiveCalls).toEqual([]);
+
+    await row.getByRole('button', { name: 'Удалить' }).click();
+    await dialog.getByRole('button', { name: 'Да, удалить запись' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(row).toHaveCount(0);
+    await expect(page.getByText('Запись удалена из списка.')).toBeVisible();
+    expect(server.archiveCalls).toEqual([bookingId]);
+    await page.getByRole('navigation', { name: 'Разделы управления' }).getByRole('button', { name: 'Обзор' }).click();
+    await expect(page.locator('.demo-admin-stats .stat-card').nth(2).locator('strong')).toHaveText('0');
+    expect(errors).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)).toBe(true);
+  });
+}
+
+test('CRM displays database archive rejection and keeps the booking visible', async ({ page }) => {
+  const server = await mockBackend(page, { archiveError: 'booking_not_found' });
+  await loginOwner(page);
+  await page.getByRole('row', { name: /Тестовый Клиент/ }).getByRole('button', { name: 'Удалить' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Да, удалить запись' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Запись уже удалена или изменилась');
+  await expect(page.getByRole('row', { name: /Тестовый Клиент/ })).toBeVisible();
+  expect(server.archiveCalls).toEqual([bookingId]);
+});
+
+test('CRM prevents deleting bookings with recorded receipts', async ({ page }) => {
+  const server = await mockBackend(page, { paymentsEnabled: true });
+  await loginOwner(page);
+  await page.getByRole('button', { name: 'Учесть оплату' }).click();
+  await page.locator('.demo-admin-payment-form').getByLabel('Сумма, ₽').fill('299,50');
+  await page.locator('.demo-admin-payment-form').getByRole('button', { name: 'Записать' }).click();
+  const deleteButton = page.getByRole('row', { name: /Тестовый Клиент/ }).getByRole('button', { name: 'Удалить' });
+  await expect(deleteButton).toBeDisabled();
+  await expect(deleteButton).toHaveAttribute('title', 'Запись с оплатами или возвратами удалить нельзя');
+  expect(server.archiveCalls).toEqual([]);
+  await page.getByRole('navigation', { name: 'Разделы управления' }).getByRole('button', { name: 'Обзор' }).click();
+  await expect(page.locator('.demo-admin-stats .stat-card').nth(3).locator('strong')).toContainText('299,50');
+});
 
 async function loginOwner(page: Page) {
   await page.goto('/admin');

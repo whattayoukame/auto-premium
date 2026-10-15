@@ -4,6 +4,8 @@
 
 **Обновление статусов 14.10.2026:** если `autopremium-setup.sql` уже применён, открой `supabase/autopremium-status-actions.sql` и выполни его отдельно в Supabase SQL Editor. Это расширит допустимые статусы существующих записей и разрешит владельцу менять их. Без SQL новый выбор статуса может не сохраняться.
 
+**Предпубликационная проверка 15.10.2026:** запусти read-only аудит `supabase/autopremium-release-audit.sql` (запросы по одному). Анонимный REST-доступ к `bookings` и `studio_owners` сейчас возвращает HTTP 401, а `autopremium_payments` — HTTP 404/PGRST205. Проверка RLS владельца, наличия архивирующей RPC и SQL-миграций требует SQL Editor. После подготовки новых маршрутов `vite.config.ts` прямые опубликованные пути должны отвечать HTTP 200 вместо прежнего 404 с fallback HTML; проверь это после нового GitHub Actions deploy.
+
 Исходники разрабатываются на **Mac** в `/Users/seva/Меню/Projects/повседневка`. **GitHub Desktop теперь установлен и авторизован на Mac**. Актуальный путь публикации: рабочий проект Mac → отдельный клон `auto-premium-github` → GitHub Desktop на Mac → GitHub Actions. Имя репозитория — **auto-premium**. Основная страница `/s/autopremium/`, форма `/s/autopremium/booking`, кабинет владельца `/admin`. Адрес проекта GitHub Pages: `https://whattayoukame.github.io/auto-premium/` (все пути после него добавляются без второго `auto-premium`). Сайт остаётся **предварительной версией** до завершения четырёх критических проверок перед реальными записями.
 
 ## 1. Настройка Supabase — новая студия

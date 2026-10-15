@@ -22,6 +22,21 @@
 
 ## Work log
 
+### 2026-10-15 — CRM release verification and GitHub Pages route entrypoints
+
+- **Request/authorization:** Resume release preparation, run local checks, fix confirmed problems, and prepare the separate Mac GitHub clone. No production Supabase mutations authorized.
+- **Checks:** CRM mocked Supabase Playwright **15/15**, local public/UI Playwright **34/34**, Vitest **3/3**, TypeScript and Pages production Vite build passed. Existing nonblocking Rollup chunk/comment warnings remain. GitHub's deployed `/admin` and `/s/autopremium/booking` currently return HTTP 404 with SPA fallback.
+- **Actions:** Pages build now emits physical route `index.html` entrypoints for the home, services, booking, my-appointment and admin paths alongside `404.html`. Tested static-server direct URLs at 390px and 1440px: **12/12 HTTP 200**, no uncaught page errors using mocked Supabase. Prepared a read-only release SQL audit. Mac clone sync now removes obsolete source files while preserving `.git`, `.env*`, dependencies and build files; updated publication guidance.
+- **Live Supabase evidence:** Public studio/services GET works; anonymous reads of `bookings` and `studio_owners` return HTTP 401/42501; `autopremium_payments` returns HTTP 404/PGRST205. Actual authenticated owner isolation, payment/archive RPC installation, migration and live booking/concurrency remain unverified; browser OpenAPI discovery unavailable.
+- **Open release blockers:** Real end-to-end booking, complete RLS/GRANT and RPC review, deployed Pages recheck after push, and client rights/content approval. Do not accept real bookings or claim production readiness. Browser/SQL audits were read-only.
+
+### 2026-10-15 — Verify deployed Auto Premium in Chrome
+
+- **Request/authorization:** User confirmed read-only Chrome verification of deployed Pages routes, mobile/desktop layout and runtime errors after pushing commit `ac8f677`.
+- **Results obtained:** Published homepage loaded with HTTP 200 and redirected to `/s/autopremium/`. Direct Pages routes returned HTTP 404 plus the SPA fallback HTML; Chrome rendered the expected home, booking and owner-login screens at 390px, and home and booking at 1440px. No horizontal overflow or uncaught JavaScript errors were seen in the completed samples. HTTP 404 navigation produced console resource messages; links contained `/auto-premium/` base. No booking or other Supabase write was attempted.
+- **Limitation:** Automatic safety review blocked retrieval of the remaining browser test output, leaving the last desktop owner-login sample unconfirmed. Do not assert the complete 8-route pass. Four release blockers remain open, including real booking/RLS/branding checks.
+
+
 ### 2026-10-15 — Prepare direct Mac-to-GitHub publication
 
 - **Request:** User installed and signed in to GitHub Desktop on Mac and requested remaining steps and maximum automation of Auto Premium deployment.

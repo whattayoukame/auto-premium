@@ -398,6 +398,20 @@
 .autopremium .demo-admin .empty-table svg { display: inline-block; vertical-align: middle; margin-right: 9px; }
 .autopremium .demo-admin-payment-open { display: block; margin: 7px 0 0 auto; padding: 4px 0; border: 0; color: #eac492; background: none; font: inherit; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .autopremium .demo-admin-payment-open:hover { color: #ffe5ba; }
+.autopremium .demo-admin-delete-open { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; margin: 8px 0 0 auto; padding: 4px 0; border: 0; color: #e8a09b; background: none; font: inherit; font-size: 11px; cursor: pointer; }
+.autopremium .demo-admin-delete-open:hover:not(:disabled) { color: #ffc2ba; }
+.autopremium .demo-admin-delete-open:disabled { opacity: .45; cursor: not-allowed; }
+.demo-admin-delete-dialog { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 28px; border: 1px solid #9c7352; border-radius: 12px; background: #25201b; color: #f1e6d6; box-shadow: 0 24px 90px #0009; }
+.demo-admin-delete-dialog::backdrop { background: rgba(0, 0, 0, .72); }
+.demo-admin-delete-dialog h2 { margin: 0 0 14px; font-size: 24px; }
+.demo-admin-delete-dialog p { margin: 0 0 13px; font-size: 13px; line-height: 1.7; color: #d1bda2; overflow-wrap: anywhere; }
+.demo-admin-delete-dialog p:first-of-type { color: #f8e2c1; font-weight: 700; }
+.demo-admin-delete-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.demo-admin-delete-dialog-actions .btn { min-height: 44px; padding: 10px 15px; }
+.demo-admin-delete-confirm { border: 1px solid #d77c72; background: #863f39; color: #fff1eb; }
+.demo-admin-delete-confirm:hover:not(:disabled) { background: #a34a43; }
+.demo-admin-delete-confirm:disabled { opacity: .6; cursor: wait; }
+.demo-admin-delete-dialog .form-error { margin-top: 18px; }
 .autopremium .demo-admin-payment-form { display: flex; align-items: end; flex-wrap: wrap; gap: 13px; margin-bottom: 23px; padding: 19px; border: 1px solid #806b4f; background: #30271e; }
 .autopremium .demo-admin-payment-form > div { flex: 1 1 200px; }
 .autopremium .demo-admin-payment-form strong { display: block; font-size: 13px; }

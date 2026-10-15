@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, ArrowUpRight, CalendarBlank, CarProfile, CaretRight, ChartBar, CheckCircle, CurrencyCircleDollar, SignOut } from '@phosphor-icons/react';
+import { ArrowRight, ArrowUpRight, CalendarBlank, CarProfile, CaretRight, ChartBar, CheckCircle, CurrencyCircleDollar, SignOut, Trash } from '@phosphor-icons/react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { ru } from 'date-fns/locale';
 import { bookingsForPeriod, dashboardMetrics, type BookingPeriod } from './lib/admin-analytics';
-import { recordRemotePayment, remoteAdminBookings, remoteAdminPayments, remoteStudio, updateRemoteBookingStatus, type AdminBookingStatus, type AdminEditableStatus } from './lib/remote-bookings';
+import { archiveRemoteBooking, recordRemotePayment, remoteAdminBookings, remoteAdminPayments, remoteStudio, updateRemoteBookingStatus, type AdminBooking, type AdminBookingStatus, type AdminEditableStatus } from './lib/remote-bookings';
 import { requireSupabase, supabase } from './lib/supabase';
 import { createUUID } from './uuid';
 
@@ -49,6 +49,16 @@ function statusError(e: unknown) {
   return 'Не удалось изменить статус записи. Проверьте подключение к серверу.';
 }
 
+function archiveError(e: unknown) {
+  const details = e && typeof e === 'object' && 'message' in e && typeof e.message === 'string'
+    ? e.message : '';
+  if (/booking_has_payments/.test(details)) return 'У этой записи есть оплаты или возвраты. Удаление заблокировано для сохранения финансовой истории.';
+  if (/booking_not_found/.test(details)) return 'Запись уже удалена или изменилась. Обновите список.';
+  if (/not_authorized|permission denied|42501|row-level security/i.test(details)) return 'Удалять записи может только владелец студии.';
+  if (/PGRST202|schema cache|autopremium_archive_booking/i.test(details)) return 'Функция удаления ещё не установлена в Supabase. Примените SQL-миграцию для удаления записей.';
+  return 'Не удалось удалить запись. Проверьте подключение к серверу.';
+}
+
 export function AutoPremiumAdminPage() {
   const qc = useQueryClient();
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
@@ -57,6 +67,9 @@ export function AutoPremiumAdminPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [changing, setChanging] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<AdminBooking | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
   const [realtime, setRealtime] = useState('Подключаем обновления…');
   const [section, setSection] = useState<'overview' | 'bookings'>('bookings');
   const [period, setPeriod] = useState<BookingPeriod>('all');
@@ -72,6 +85,13 @@ export function AutoPremiumAdminPage() {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const dialog = deleteDialog.current;
+    if (!deleteTarget || !dialog) return;
+    dialog.showModal();
+    return () => { if (dialog.open) dialog.close(); };
+  }, [deleteTarget]);
 
   useEffect(() => {
     if (!supabase) { setUserId(null); return; }
@@ -145,6 +165,22 @@ export function AutoPremiumAdminPage() {
       await qc.invalidateQueries({ queryKey: [queryPrefix, 'bookings'] });
     } catch (e) { setError(statusError(e)); }
     finally { setChanging(''); }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true); setError(''); setNotice('');
+    try {
+      await archiveRemoteBooking(studioSlug, deleteTarget.id);
+      if (paymentBookingId === deleteTarget.id) setPaymentBookingId(null);
+      setDeleteTarget(null);
+      await Promise.allSettled([
+        qc.invalidateQueries({ queryKey: [queryPrefix, 'bookings'] }),
+        qc.invalidateQueries({ queryKey: [queryPrefix, 'payments'] }),
+      ]);
+      setNotice('Запись удалена из списка. Время снова доступно для бронирования.');
+    } catch (e) { setError(archiveError(e)); }
+    finally { setDeleting(false); }
   }
 
   async function addPayment(event: React.FormEvent) {
@@ -251,15 +287,26 @@ export function AutoPremiumAdminPage() {
           </form>}
           {access.isSuccess && bookings.data && <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th>ДАТА И ВРЕМЯ</th><th>УСЛУГА</th><th>КЛИЕНТ</th><th>ТЕЛЕФОН</th><th>АВТО</th><th>СТАТУС</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody>
             {filtered.map(booking => <tr key={booking.id}><td>{russianDate(booking.startsAt, timezone)}</td><td>{booking.serviceTitle}</td><td>{booking.customerName || '—'}</td><td>{booking.phone || '—'}</td><td>{booking.car}</td><td><span className={`status-tag ${['new', 'arrived'].includes(booking.status) ? 'reserved' : booking.status}`} title={booking.status === 'ready' ? 'Клиент приехал, услуга ещё не выполнена' : undefined}>{statusLabels[booking.status] ?? 'Неизвестно'}</span></td><td>
-              <select className="admin-status-select" aria-label={`Действия с записью ${booking.customerName || booking.id}`} value="" disabled={changing === booking.id} onChange={event => void changeStatus(booking.id, booking.status, event.target.value as AdminEditableStatus)}>
+              <select className="admin-status-select" aria-label={`Действия с записью ${booking.customerName || booking.id}`} value="" disabled={changing === booking.id || deleting} onChange={event => void changeStatus(booking.id, booking.status, event.target.value as AdminEditableStatus)}>
                 <option value="" disabled>{changing === booking.id ? 'Сохраняем…' : 'Действия'}</option>
                 {actions.map(action => <option key={action.value} value={action.value} disabled={action.value === booking.status || (action.value === 'reserved' && (booking.status === 'new' || booking.status === 'arrived'))}>{action.title}</option>)}
               </select>
               {payments.data != null && <button type="button" className="demo-admin-payment-open" onClick={() => { setPaymentBookingId(booking.id); setPaymentOperationId(createUUID()); setPaymentAmount(''); setNotice(''); }}>Учесть оплату</button>}
+              <button type="button" className="demo-admin-delete-open" disabled={changing === booking.id || deleting || !!payments.data?.some(payment => payment.bookingId === booking.id)} title={payments.data?.some(payment => payment.bookingId === booking.id) ? 'Запись с оплатами или возвратами удалить нельзя' : 'Удалить запись из CRM'} onClick={() => { setError(''); setNotice(''); setDeleteTarget(booking); }}><Trash size={14}/> Удалить</button>
             </td></tr>)}
           </tbody></table>{!filtered.length && <div className="empty-table"><CalendarBlank size={24}/> На выбранный период записей нет.</div>}</div>}
         </>}
       </section>
     </div>
+    {deleteTarget && <dialog ref={deleteDialog} className="demo-admin-delete-dialog" aria-labelledby="delete-booking-title" aria-describedby="delete-booking-description" onCancel={event => { if (deleting) event.preventDefault(); else setDeleteTarget(null); }}>
+      <h2 id="delete-booking-title">Точно удалить запись?</h2>
+      <p id="delete-booking-description">{deleteTarget.customerName || 'Клиент'} · {deleteTarget.serviceTitle} · {russianDate(deleteTarget.startsAt, timezone)}</p>
+      <p>Запись исчезнет из CRM, а время освободится для новых клиентов. Действие нельзя отменить через панель. Записи с оплатами защищены от удаления.</p>
+      <div className="demo-admin-delete-dialog-actions">
+        <button type="button" className="btn btn-outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>Оставить запись</button>
+        <button type="button" className="btn demo-admin-delete-confirm" disabled={deleting} onClick={() => void confirmDelete()}>{deleting ? 'Удаляем…' : 'Да, удалить запись'}</button>
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
+    </dialog>}
   </div></div>;
 }
