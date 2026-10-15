@@ -374,6 +374,13 @@
 .autopremium .demo-admin .owner-table th:last-child,
 .autopremium .demo-admin .owner-table td:last-child { text-align: right; }
 .autopremium .demo-admin .owner-table td:last-child { white-space: nowrap; }
+/* Center booking actions independently of the dashboard's status-only table. */
+.autopremium .demo-admin .demo-admin-bookings-table th:last-child,
+.autopremium .demo-admin .demo-admin-bookings-table td:last-child { text-align: center; }
+.autopremium .demo-admin .demo-admin-bookings-table td:last-child { padding-top: 10px; padding-bottom: 10px; }
+.autopremium .demo-admin-bookings-table .admin-status-select { display: block; margin: 0 auto; }
+.autopremium .demo-admin-bookings-table .demo-admin-payment-open { margin: 8px auto 0; }
+.autopremium .demo-admin-bookings-table .demo-admin-delete-open { display: flex; justify-content: center; margin: 8px auto 0; }
 .autopremium .demo-admin .status-tag.reserved {
   color: #b9d8ff; background: rgba(124, 178, 255, .1); border-color: rgba(124, 178, 255, .36);
 }

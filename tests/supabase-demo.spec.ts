@@ -277,6 +277,17 @@ test(`owner sees Russian month and can change each booking status with separate 
   const positions = await row.getByRole('cell').nth(5).boundingBox();
   const actionsBox = await row.getByRole('cell').nth(6).boundingBox();
   expect(positions && actionsBox && actionsBox.x >= positions.x + positions.width).toBeTruthy();
+  const selectBox = await selector.boundingBox();
+  const deleteBox = await row.getByRole('button', { name: 'Удалить' }).boundingBox();
+  const headingBox = await page.getByRole('columnheader', { name: 'ДЕЙСТВИЯ' }).boundingBox();
+  expect(actionsBox && selectBox && deleteBox && headingBox).toBeTruthy();
+  if (actionsBox && selectBox && deleteBox && headingBox) {
+    const center = (box: { x: number; width: number }) => box.x + box.width / 2;
+    expect(Math.abs(center(selectBox) - center(actionsBox))).toBeLessThan(3);
+    expect(Math.abs(center(deleteBox) - center(actionsBox))).toBeLessThan(3);
+    expect(Math.abs(center(headingBox) - center(actionsBox))).toBeLessThan(3);
+    expect(deleteBox.y - (selectBox.y + selectBox.height)).toBeGreaterThanOrEqual(7);
+  }
 
   await selector.selectOption('ready');
   await expect(status).toHaveText('Готово');

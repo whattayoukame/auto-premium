@@ -22,6 +22,19 @@
 
 ## Work log
 
+### 2026-10-15 — Verify centered CRM booking actions in Chrome
+
+- **Request/authorization:** User approved retrying desktop/mobile browser verification of the `/admin` action-column alignment after a blocked test-result retrieval.
+- **Checks/result:** Chrome Playwright with mocked Supabase passed the focused action geometry/status tests **2/2** at 390px and 1440px, including centered dropdown, delete control, centered header and at least 7px vertical clearance. Full CRM suite **15/15** also passed, covering status changes, confirmed deletion, payment protection, filters, customer booking and ledger flows. The status tests collect and assert no uncaught page errors. No further code adjustment was necessary.
+- **Scope/outstanding:** Browser results concern local mocked data; live Supabase verification, published Pages routing, final content and real iOS Safari remain open. No GitHub push, Supabase write or production deployment.
+
+### 2026-10-15 — Center CRM booking actions and separate delete control
+
+- **Request:** Align the `/admin` booking-actions dropdown within its column and stop it crowding the «Удалить» button, on desktop and mobile.
+- **Changes:** Scoped styling to the seven-column bookings table; centered its «ДЕЙСТВИЯ» header, dropdown, payment link (when enabled), and delete button. Stacked the controls with an 8px gap and reduced cell vertical padding. Upcoming-bookings overview table is unchanged. Added geometric Playwright assertions for action centering and vertical clearance at 390px/1440px.
+- **Verification:** TypeScript and production Vite build passed with existing nonblocking warnings; Vitest **3/3** passed; `git diff --check` passed. The mocked CRM Playwright suite started (15 scenarios) but automatic safety review blocked retrieval of final results, so browser layout and interactions **are not verified in this task**.
+- **Outstanding:** Confirm the layout visually in Chrome at desktop/mobile widths; iOS Safari and live booking/RLS/Pages/content release checks remain open. Source change is local only; no GitHub push or Supabase mutation.
+
 ### 2026-10-15 — CRM release verification and GitHub Pages route entrypoints
 
 - **Request/authorization:** Resume release preparation, run local checks, fix confirmed problems, and prepare the separate Mac GitHub clone. No production Supabase mutations authorized.
